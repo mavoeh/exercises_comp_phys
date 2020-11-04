@@ -15,6 +15,6 @@ def hplot(i, N = 20):
     plt.plot(h, data[N-2,:,i])
 
 for n in range(2,21):
-    hplot(3, N=n)
+    hplot(2, N=n)
     
 plt.show()

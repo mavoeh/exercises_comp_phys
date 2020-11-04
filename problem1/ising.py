@@ -61,11 +61,9 @@ def simulate(J, h, N, show_results = True):
     # define function that calculates the total energy (hamiltonian)
     # for a fixed J, h, and spin configuration s (1d numpy array of length N)
     def H(J, h, s):
-        interact = 0
-        for i in range(N):
-            interact += s[i] * s[(i+1)%N]
-            # the mod N ensures peridic boundary conditions
-            # by connecting the first and last spins as neighbors
+        interact = np.sum(s[:-1]*s[1:]) + s[0]*s[-1]
+        if N == 2:
+            interact /= 2
         interact *= -J
         external = -h*np.sum(s)
         return interact + external
@@ -111,7 +109,7 @@ def simulate(J, h, N, show_results = True):
 J = 1 # initialize spin coupling to J = 1
 
 # create array for values of h from -1, 1 in steps of 0.01
-h_array = np.linspace(-1,1,201)
+h_array = np.linspace(-1,1,21)
 # same for N from 2 to 20 in interger steps
 N_array = np.linspace(2, 20, 19, dtype = np.int)
 
