@@ -52,10 +52,7 @@ def simulate(J, h, N, show_results = True):
     
     """
     for i in range(N):
-        for j in range(n[i]):
-            L = n[N-i-1]
-            configs[    2*j*L : (2*j+1)*L, i] = 1
-            configs[(2*j+1)*L : (2*j+2)*L, i] = -1
+        configs[:,-i-1] = np.array( ([1]*n[i] + [-1]*n[i]) * n[-i-1])
 
 
     # define function that calculates the total energy (hamiltonian)
@@ -90,10 +87,7 @@ def simulate(J, h, N, show_results = True):
     
     # by multiplying the probability of a certain spin config with the spin value
     # for all spin sites and configs, the average magnetization is determined
-    m = np.zeros(N)
-    for i, config in enumerate(configs[:,]):
-        # average over all configs
-        m += P[i]*config
+    m = np.dot(P, configs)
     
     # average over all spin sites (could also just take one of the values because
     # they are all equal, as the problem is invariant under rotation of spin sites)
