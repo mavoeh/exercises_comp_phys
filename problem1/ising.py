@@ -115,5 +115,3 @@ for N in N_array:
         f = open("results.txt", "a")
         f.write("{0:.2f}\t{1:d}\t{2:e}\t{3:e}\t{4:e}\t{5:e}\n".format(*simulate(J, h, N, show_results = False)))
         f.close()
-
-
