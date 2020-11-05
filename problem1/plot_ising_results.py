@@ -55,7 +55,7 @@ plt.colorbar()
 plt.xticks(range(2,21,2))
 plt.yticks(np.linspace(-1,1,5))
 plt.xlabel("number of spins $N$", **font)
-plt.ylabel("average magnetization $<m>$", **font)
+plt.ylabel("external coupling $h$", **font)
 
 
 plt.show()
