@@ -7,7 +7,7 @@ font = {"fontname":"Times New Roman", "fontsize":18}
 h, N, Z, Z_analytical, delta, m = np.loadtxt("results_backup.txt", unpack = True)
 
 # initialize empty array to store the data
-data = np.zeros((19, 201, 4))
+data = np.zeros((19 , 201, 4))
 
 # loop over all N
 for n in range(19):
@@ -30,12 +30,14 @@ def Nplot(i, h):
     plt.plot(N, data[:,h_index,i])
     
 
+
 fig_hplot = plt.figure(figsize=(8,6))
 for n in range(2,21):
     hplot(3, N=n)
 plt.xlabel("external coupling $h$", **font)
 plt.ylabel("average magnetization $<m>$", **font)
 plt.grid(True)
+
 
 fig_Nplot = plt.figure(figsize=(8,6))
 for n in range(21):
