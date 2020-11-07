@@ -95,15 +95,22 @@ def simulate(J, h, N, n, show_results = True):
 
 
 J = 1 # initialize spin coupling to J = 1
-n = 5000 #varying number of configs
+no = np.zeros(19, dtype = np.int) #varying number of configs
+for i in range(len(no)):
+    if(i <= 12):
+        no[i] = 2**(i+2)
+    else:
+        no[i] = 5000
 
 # create array for values of h from -1, 1 in steps of 0.01
-h_array = np.linspace(-1,1,21)
+h_array = np.linspace(-1,1,201)
 # same for N from 2 to 20 in interger steps
 N_array = np.linspace(2, 20, 19, dtype = np.int)
 
 # loop ove rall combinations
-for N in N_array:
+for i in range(len(N_array)):
+    n = no[i]
+    N = N_array[i]
     for h in h_array:
         print("N = {0:d} from 20, h = {1:5.2f} from -1 to 1 in steps of 0.01".format(N,h), end = "\r")
         # write output of the simulate function to a text file

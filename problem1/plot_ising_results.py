@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 font = {"fontname":"Times New Roman", "fontsize":18}
 
 #load data into arrays
-h, N, Z, Z_analytical, delta, m = np.loadtxt("results_backup.txt", unpack = True)
+h, N, Z, Z_analytical, delta, m = np.loadtxt("results_random.txt", unpack = True)
 
 # initialize empty array to store the data
 data = np.zeros((19 , 201, 4))
