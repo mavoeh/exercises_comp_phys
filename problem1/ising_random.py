@@ -58,8 +58,10 @@ def simulate(J, h, N, n, show_results = True):
     def Z(z_array):
         return np.sum(zarray(J, h, n))
 
-    deltaZ = Z(zarray(J, h, n))-Z_analytical
-    delta = np.abs(deltaZ)/Z(zarray(J, h, n))
+
+    Zres = Z(zarray(J, h, n))
+    deltaZ = Zres-Z_analytical
+    delta = np.abs(deltaZ)/Zres
 
     if show_results:
         print("partition function Z = {0:.20e}".format(Z))
@@ -67,15 +69,11 @@ def simulate(J, h, N, n, show_results = True):
 
         print("\nresulting error: deltaZ = {0:e}".format(deltaZ))
         print("relative error    delta = {0:e}".format(delta))
-    
-
-    '''    
-    def difflogZ(J, h, n):
-        return 1./2.*10000*(np.log(Z(zarray(J, h+2./10000., n))) - np.log(Z(zarray(J, h-2./10000., n))))
-
-    m = 1./N*difflogZ(J, h, n)
 
     '''
+    m = 1./N*10*(np.log(Z(zarray(J, h+1./20, n))) - np.log(Z(zarray(J, h-1./20, n))))
+    
+    
     # from the boltzmann factors and partition func calculate probabilities
     P = zarray(J, h, n)/Z(zarray(J, h, n))
     
@@ -86,24 +84,32 @@ def simulate(J, h, N, n, show_results = True):
     # average over all spin sites (could also just take one of the values because
     # they are all equal, as the problem is invariant under rotation of spin sites)
     m = np.sum(m)/len(m)
+    '''
+
+    m_array = np.zeros(n)
+    for i in range(len(m_array)):
+        m_array[i] = np.sum(configs[i])*np.exp(-H(J, h, configs[i]))
+
+    m = 1./N/Zres*np.sum(m_array)
+
 
     if show_results: # display m
         print("\naverage magnetization <m> = {0:.3f}".format(m))
-    
-    return h, N, Z(zarray(J, h, N)), Z_analytical, delta, m
+
+    m_analytical = (np.exp(J)*(np.cosh(h) + np.sqrt( np.sinh(h)**2 + np.exp(-4*J) )))**(N-1)*np.exp(J)*(np.sinh(h) + np.sinh(h)*np.cosh(h)/np.sqrt(np.sinh(h)**2 + np.exp(-4*J) ))
+    m_analytical += (np.exp(J)*(np.cosh(h) - np.sqrt( np.sinh(h)**2 + np.exp(-4*J) )))**(N-1)*np.exp(J)*(np.sinh(h) - np.sinh(h)*np.cosh(h)/np.sqrt(np.sinh(h)**2 + np.exp(-4*J) ))
+    m_analytical *= -1./Z_analytical
+
+
+    return h, N, Zres, Z_analytical, delta, m
 
 
 
 J = 1 # initialize spin coupling to J = 1
-no = np.zeros(19, dtype = np.int) #varying number of configs
-for i in range(len(no)):
-    if(i <= 12):
-        no[i] = 2**(i+2)
-    else:
-        no[i] = 5000
+no = np.repeat(5000, 19)
 
 # create array for values of h from -1, 1 in steps of 0.01
-h_array = np.linspace(-1,1,201)
+h_array = np.linspace(-1,1,21)
 # same for N from 2 to 20 in interger steps
 N_array = np.linspace(2, 20, 19, dtype = np.int)
 
@@ -117,3 +123,4 @@ for i in range(len(N_array)):
         f = open("results_random.txt", "a")
         f.write("{0:.2f}\t{1:d}\t{2:e}\t{3:e}\t{4:e}\t{5:e}\n".format(*simulate(J, h, N, n, show_results = False)))
         f.close()
+
