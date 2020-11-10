@@ -33,7 +33,7 @@ def simulate(J, h, N, n, show_results = True):
     average magnetization        m
     statistical error for m      delm
     analytical result for m      m_analytical
-    relative deviations          delta = |m-m_analytical|/m
+    absolute deviation           delta = m_analytical - m
 
     """
     # calculate the analytical result for the partition function and magnetization m
@@ -43,7 +43,7 @@ def simulate(J, h, N, n, show_results = True):
 
     m_analytical = (np.exp(J)*(np.cosh(h) + np.sqrt( np.sinh(h)**2 + np.exp(-4*J) )))**(N-1)*np.exp(J)*(np.sinh(h) + np.sinh(h)*np.cosh(h)/np.sqrt(np.sinh(h)**2 + np.exp(-4*J) ))
     m_analytical += (np.exp(J)*(np.cosh(h) - np.sqrt( np.sinh(h)**2 + np.exp(-4*J) )))**(N-1)*np.exp(J)*(np.sinh(h) - np.sinh(h)*np.cosh(h)/np.sqrt(np.sinh(h)**2 + np.exp(-4*J) ))
-    m_analytical *= -1./Z_analytical
+    m_analytical *= 1./Z_analytical
 
 
     #define function that calculates the total energy (hamiltonian)
@@ -69,7 +69,7 @@ def simulate(J, h, N, n, show_results = True):
         return np.sum(zarray(J, h, n))
 
     # define the number of 'measurements' Nmes i.e, the number of times we calculate m for n spin configurations
-    Nmeas = 1000
+    Nmeas = 100
     mray = np.zeros(Nmeas)
     Zray = np.zeros(Nmeas)
     
@@ -97,15 +97,15 @@ def simulate(J, h, N, n, show_results = True):
 
     #Calculate mean value of m and Z (average over all "measurements")
 
-    Zres = np.sum(Zray)/Nmeas
-    m = np.sum(mray)/Nmeas
+    Zres = np.mean(Zray)
+    m = np.mean(mray)
 
     #Calculate statistical error of m and Z and relative deviation to analytical result. Display results if show_results = True
-    delZres = np.sqrt(np.sum((Zray-Zres)**2))
-    delm = np.sqrt(np.sum((m-mray)**2))
+    delZres = np.std(Zray)
+    delm = np.std(mray)
 
-    deltam = m-m_analytical
-    delta = np.abs(deltam)/m
+    delta = m_analytical - m 
+    deltam = np.abs(delta)/m
 
     if show_results:
         print("partition function Z = {0:.20e}".format(Z))
@@ -128,7 +128,7 @@ no = np.repeat(100, 19) #number of spin configurations calculated for each 'meas
 # create array for values of h from -1, 1 in steps of 0.01 (h100) or 0.1 (h10)
 h100 = 201
 h10 = 21
-h_array = np.linspace(-1,1, h10)
+h_array = np.linspace(-1,1, h100)
 # same for N from 2 to 20 in integer steps
 N_array = np.linspace(2, 20, 19, dtype = np.int)
 

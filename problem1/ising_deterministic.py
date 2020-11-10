@@ -121,6 +121,6 @@ for N in N_array:
     for h in h_array:
         print("N = {0:d} from 20, h = {1:5.2f} from -1 to 1 in steps of 0.01".format(N,h), end = "\r")
         # write output of the simulate function to a text file
-        f = open("results.txt", "a")
+        f = open("results_det.txt", "a")
         f.write("{0:.2f}\t{1:d}\t{2:e}\t{3:e}\t{4:e}\t{5:e}\n".format(*simulate(J, h, N, show_results = False)))
         f.close()
