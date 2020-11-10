@@ -1,3 +1,10 @@
+'''
+In this code we calculate the magnetization deterministically by creating all possible spin configurations (there 
+are 2^N possibilities for N sites and 2 possible spin directions) and summming over all of them. 
+This leads to an almost exact result (very close to analytical result), but it takes some time, especially when
+calculating for h in steps of 0.01.
+'''
+
 import numpy as np
 
 def simulate(J, h, N, show_results = True):
@@ -83,7 +90,6 @@ def simulate(J, h, N, show_results = True):
         print("relative error    delta = {0:e}".format(delta))
 
 
-    '''
     # from the boltzmann factors and partition func calculate probabilities
     P = z_array/Z
     
@@ -94,13 +100,8 @@ def simulate(J, h, N, show_results = True):
     # average over all spin sites (could also just take one of the values because
     # they are all equal, as the problem is invariant under rotation of spin sites)
     m = np.sum(m)/len(m)
-    '''
-    m_array = np.zeros(2**N)
-    for i in range(len(m_array)):
-        m_array[i] = np.sum(configs[i])*np.exp(-H(J, h, configs[i]))
-
-    m = 1./N/Z*np.sum(m_array)
     
+
     if show_results: # display m
         print("\naverage magnetization <m> = {0:.3f}".format(m))
     
@@ -111,7 +112,7 @@ def simulate(J, h, N, show_results = True):
 J = 1 # initialize spin coupling to J = 1
 
 # create array for values of h from -1, 1 in steps of 0.01
-h_array = np.linspace(-1,1,21)
+h_array = np.linspace(-1,1,201)
 # same for N from 2 to 20 in interger steps
 N_array = np.linspace(2, 20, 19, dtype = np.int)
 

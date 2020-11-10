@@ -1,3 +1,9 @@
+'''
+Plots average magnetization dependent of number of spin sites N for certain values of the external field 
+couling h, and dependet on h for certain N. 
+In this code we plot the results obtained by running the code 'ising.py'.
+'''
+
 import numpy as np
 import matplotlib.pyplot as plt
 
