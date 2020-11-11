@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 font = {"fontname":"Times New Roman", "fontsize":18}
 
 #load data from .txt documents obtained from ising_sum.py into arrays
-h, N, Z, delZ, m, delm, m_analytical, delta = np.loadtxt("results_sum1000.txt", unpack = True)
+h, N, Z, delZ, m, delm, m_analytical, delta = np.loadtxt("results_sum100.txt", unpack = True)
 
 #depending on which step for h was calculated use 
 h10 = 21 #for h in steps of 0.1
@@ -44,13 +44,12 @@ def Nplot(i, h):
 fig_hplot = plt.figure(figsize=(8,6))
 harray = np.linspace(-1, 1, h10)
 for n in range(5):
-    hplot(2, N=4*n+2)
-#plt.errorbar(harray, data[8,:,2], data[8,:,3], fmt = ".", color = "green")
+    hplot(4, N=4*n+2)
 plt.xlabel("external coupling $h$", **font)
 plt.ylabel(r"average magnetization $\langle m\rangle$", **font)
 plt.grid(True)
 plt.legend()
-plt.savefig("hplot_sum1000.pdf", bosinches = "tight")
+plt.savefig("hplot_ana100.pdf", bosinches = "tight")
 
 #Plot m depending on h for N = 10 with errors for m
 fig_hsingle = plt.figure(figsize=(8,6))
@@ -61,23 +60,23 @@ plt.xlabel("external coupling $h$", **font)
 plt.ylabel(r"average magnetization $\langle m\rangle$", **font)
 plt.grid(True)
 plt.legend()
-plt.savefig("hsingle_sum1000.pdf", bosinches = "tight")
+plt.savefig("hsingle_sum100.pdf", bosinches = "tight")
 
 #plot m depending on N for a few different h, one with errors for m 
 fig_Nplot = plt.figure(figsize=(8,6))
 Narray = np.linspace(2, 20, 19)
 for n in range(5):
-  Nplot(2, -1.+0.5*n)
+  Nplot(4, -1.+0.5*n)
 plt.errorbar(Narray, data[:,10,2], data[:,10,3], fmt = ".", color = "green")
 plt.xlabel("number of spins $N$", **font)
 plt.ylabel(r"average magnetization $\langle m\rangle$", **font)
 plt.grid(True)
 plt.legend()
-plt.savefig("Nplot_sum1000.pdf", bosinches = "tight")
+plt.savefig("Nplot_ana100.pdf", bosinches = "tight")
 
 #plot m in a 2d plot against h and N
 fig = plt.figure(figsize=(8,6))
-plt.imshow(data[:,:,2].T,
+plt.imshow(data[:,:,4].T,
            aspect="auto",
            extent = [2,20,-1,1],
            origin = "lower",
@@ -87,7 +86,7 @@ plt.xticks(range(2,21,2))
 plt.yticks(np.linspace(-1,1,5))
 plt.xlabel("number of spins $N$", **font)
 plt.ylabel("external coupling $h$", **font)
-plt.savefig("2d_sum1000.pdf", bosinches = "tight")
+plt.savefig("2d_ana100.pdf", bosinches = "tight")
 
 delta_fig = plt.figure(figsize=(8,6))
 plt.imshow(data[:,:,5].T,
@@ -100,6 +99,6 @@ plt.xticks(range(2,21,2))
 plt.yticks(np.linspace(-1,1,5))
 plt.xlabel("number of spins $N$", **font)
 plt.ylabel("external coupling $h$", **font)
-plt.savefig("2d_delta_sum1000.pdf", bosinches = "tight")
+plt.savefig("2d_delta_sum100.pdf", bosinches = "tight")
 
 plt.show()

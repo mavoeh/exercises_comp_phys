@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 font = {"fontname":"Times New Roman", "fontsize":18}
 
 #load data into arrays
-h, N, Z, Z_analytical, delta, m = np.loadtxt("results_backup.txt", unpack = True)
+h, N, Z, Z_analytical, delta, m = np.loadtxt("results_det.txt", unpack = True)
 
 # initialize empty array to store the data
 data = np.zeros((19 , 201, 4))
@@ -27,30 +27,34 @@ for n in range(19):
 def hplot(i, N = 20):
     # plots variable i against h (-1 to 1) for a certain N
     h = np.linspace(-1, 1, 201)
-    plt.plot(h, data[N-2,:,i])
+    plt.plot(h, data[N-2,:,i], label= "N = {}".format(N))
 
 def Nplot(i, h):
     # plots variable i against N for certain h
     N = np.linspace(2, 20, 19)
     h_index = int(100*h + 100)
-    plt.plot(N, data[:,h_index,i])
+    plt.plot(N, data[:,h_index,i], label = "h = {:.1f}".format(h))
     
 
 
 fig_hplot = plt.figure(figsize=(8,6))
-for n in range(2,21):
-    hplot(3, N=n)
+for n in range(5):
+    hplot(3, N=4*n+2)
 plt.xlabel("external coupling $h$", **font)
 plt.ylabel("average magnetization $<m>$", **font)
 plt.grid(True)
+plt.legend()
+plt.savefig("hplot_det.pdf", bosinches = "tight")
 
 
 fig_Nplot = plt.figure(figsize=(8,6))
-for n in range(21):
-	Nplot(3, -1+0.1*n)
+for n in range(5):
+  Nplot(3, -1.+0.5*n)
 plt.xlabel("number of spins $N$", **font)
 plt.ylabel("average magnetization $<m>$", **font)
 plt.grid(True)
+plt.legend()
+plt.savefig("Nplot_det.pdf", bosinches = "tight")
 
 
 fig = plt.figure(figsize=(8,6))
@@ -64,6 +68,7 @@ plt.xticks(range(2,21,2))
 plt.yticks(np.linspace(-1,1,5))
 plt.xlabel("number of spins $N$", **font)
 plt.ylabel("external coupling $h$", **font)
+plt.savefig("2dplot_det.pdf", bosinches = "tight")
 
 
 plt.show()
