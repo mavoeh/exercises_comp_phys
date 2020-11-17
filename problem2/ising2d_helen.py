@@ -18,9 +18,11 @@ def H(J, h, Nx, Ny, config):
         external = -h*np.sum(config)
         return interact + external
 
+
 def sweep(config, Nx, Ny, J, h):
 
     '''
+    
     Implements Metropolis-Hastings method for a spin configuration config in a lattice with Nx*Ny spins
 
     Input:
@@ -33,6 +35,7 @@ def sweep(config, Nx, Ny, J, h):
     configuration with smallest possible energy    listconfigs
 
     '''
+    
 
     #sweep through the lattice
     for i in range(Nx):
@@ -55,6 +58,7 @@ def sweep(config, Nx, Ny, J, h):
 def simulate(J, h, Nx, Ny, Nmeas):
     
     '''
+    
     Implements Metropolis-Hastings method for a spin configuration config in a lattice with Nx*Ny spins
 
     Input
@@ -75,6 +79,7 @@ def simulate(J, h, Nx, Ny, Nmeas):
     exact value for eps         eps_exact        
     
     '''
+    
 
     mray = np.zeros(Nmeas)
     epsray = np.zeros(Nmeas)
@@ -84,15 +89,15 @@ def simulate(J, h, Nx, Ny, Nmeas):
 
         # sample spin configuration 
     
-        config = np.random.choice([-1, 1], (Nx, Ny)) 
+        confignew = np.random.choice([-1, 1], (Nx, Ny)) 
 
-        config = sweep(config, Nx, Ny, J, h)
+        config = sweep(confignew, Nx, Ny, J, h)
 
         #calculate m for each spin configuration 
         mray[t] = 1./Nx/Ny*np.sum(config)
 
         #calculate energy per site
-        epsray[t] = 1/Nx/Ny*np.sum(H(J, h, Nx, Ny, config))
+        epsray[t] = 1./Nx/Ny*H(J, h, Nx, Ny, config)
 
 
     #Calculate mean value of m and eps (average over all "measurements")

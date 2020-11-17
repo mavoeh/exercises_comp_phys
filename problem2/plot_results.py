@@ -56,39 +56,56 @@ for n in range(17):
     # 3rd index -> variable: 0 = m, 1 = delm, 2 = eps, 3 = deleps, 4=absm, 5 = delabsm, 6 = absm_exact, 7 = eps_exact
     data[n,:,:] = np.column_stack([m[mask], delm[mask], eps[mask], deleps[mask], absm[mask], delabsm[mask], absm_exact[mask], eps_exact[mask]])
 
-def Jplot_m(N = 20):
+def Jplot_m(i, N = 20):
     # plots variable absm against J (-0.25 to 1) for a certain N
-    absm = data[N-4,:,4]
+    absm = data[N-4,:,i]
     J = np.linspace(0.25, 2, len(absm))
-    plt.plot(J[J<=1]**(-1), absm[J<=1], label = "N = {}".format(N))
+    mask = J <= 1
+    plt.plot(J[mask]**(-1), absm[mask], label = "N = {}".format(N))
 
-#Plot m depending on h for a few different N
+
+#Plot |m| depending on J for a few different N
 fig_Jplot = plt.figure(figsize=(8,6))
-for n in range(4):
-    Jplot_m(N=n*4+4)
+for n in range(17):
+    Jplot_m(4, N=n+4)
 Jarray = np.linspace(0.25, 1, len(data[4,:,6]))
-plt.plot(Jarray**(-1), data[4,:,6], label = "exact")
-plt.xlabel("coupling constant $J$", **font)
+plt.plot(1./Jarray, data[4,:,6], label = "exact")
+plt.xlabel("coupling constant $J^{-1}$", **font)
 plt.ylabel(r"average value of absolute magnetization $\langle | m |\rangle$", **font)
 plt.grid(True)
 plt.legend()
 plt.savefig("absm_J100.pdf", bosinches = "tight")
 
-def Jplot_eps(i, N = 20):
-    # plots variable i against h for a certain N
-    J = np.linspace(0.25, 2, 100)
-    plt.plot(J, data[N-4,:,2], label = "N = {}".format(N))
+#Plot m depending on J for a few different N
+fig_Jplot = plt.figure(figsize=(8,6))
+for n in range(17):
+    Jplot_m(0, N=n+4)
+Jarray = np.linspace(0.25, 1, len(data[4,:,6]))
+plt.plot(1./Jarray, data[4,:,6], label = "exact")
+plt.xlabel("coupling constant $J^{-1}$", **font)
+plt.ylabel(r"average value of magnetization $\langle m \rangle$", **font)
+plt.grid(True)
+plt.legend()
+plt.savefig("m_J100.pdf", bosinches = "tight")
 
-#Plot m depending on h for a few different N
+
+def Jplot_eps(i, N = 20):
+    # plots variable i against J for a certain N
+    J = np.linspace(0.25, 2, 100)
+    plt.plot(J, data[N-4,:,i], label = "N = {}".format(N)) #eps data times two?
+
+#Plot eps depending on J for a few different N
 fig_Jplot = plt.figure(figsize=(8,6))
 for n in range(17):
     Jplot_eps(2, N=n+4)
-Jarray = np.linspace(0.25, 2, len(data[10,:,5]))
-plt.plot(Jarray, data[4,:,7], label = "exact")
+Jarray = np.linspace(0.25, 2, len(data[10,:,7]))
+plt.plot(Jarray, data[8,:,7], label = "exact")
 plt.xlabel("coupling constant $J$", **font)
 plt.ylabel(r"average energy per site $\langle \epsilon \rangle$", **font)
 plt.grid(True)
 plt.legend()
 plt.savefig("eps_J100.pdf", bosinches = "tight")
 plt.show()
+
+
 
