@@ -123,7 +123,7 @@ def simulate(J, h, Nx, Ny, Nmeas, Ntherm, nBS):
     if(h == 0):
         mabs_exact, eps_exact = analytic_solutions(J)
         # plot the history of m, if the absolute value of m deviates by more that diff from the analytic solution
-        diff = 0.
+        diff = 10
         if np.abs(mabs-mabs_exact) > diff:
             plt.figure()
             plt.scatter(np.linspace(1,Ntherm+Nmeas+2,Ntherm+Nmeas+1),mhist)
@@ -204,14 +204,14 @@ def Jplot(N_values, J_array):
     
     # create figs/axes for m absolute plot
     multifig_mabs, axs_mabs = plt.subplots(2,2,sharex=True,sharey=True,figsize=(8,6))
-    multifig_mabs.text(0.535, 0.02, "J", ha='center', **font)
-    multifig_mabs.text(0.02, 0.525, r'$\langle m \rangle$', va='center', rotation='vertical', **font)
+    multifig_mabs.text(0.535, 0.02, "$1/J$", ha='center', **font)
+    multifig_mabs.text(0.02, 0.525, r'$\langle |m| \rangle$', va='center', rotation='vertical', **font)
     singlefig_mabs, singleax_mabs = plt.subplots(1,1,figsize=(8,6))
     
     #create figs/axes for epsilon plot
     multifig_eps, axs_eps = plt.subplots(2,2,sharex=True,sharey=True,figsize=(8,6))
-    multifig_eps.text(0.535, 0.02, "J", ha='center', **font)
-    multifig_eps.text(0.02, 0.525, '$\epsilon$', va='center', rotation='vertical', **font)
+    multifig_eps.text(0.515, 0.02, "$J$", ha='center', **font)
+    multifig_eps.text(0.02, 0.505, '$\epsilon$', va='center', rotation='vertical', **font)
     singlefig_eps, singleax_eps = plt.subplots(1,1,figsize=(8,6))
     
     colors = ['magenta','lime','red','blue']
@@ -221,26 +221,25 @@ def Jplot(N_values, J_array):
             data[j,:] = simulate (J, h, N, N, Nmeas, Ntherm, nBS)
         # plot m absolute
         ax_mabs = axs_mabs[i//2,i%2]
-        ax_mabs.errorbar(J_array, data[:,2], data[:,3],
+        ax_mabs.errorbar(1/J_array, data[:,2], data[:,3],
                          label = ("N = %d"%N),
                          linestyle = "none",
                          capsize = 2,
                          capthick = 2)
-        ax_mabs.plot(J_fine, mabs_exact, c="black", label="analytic")
-        ax_mabs.legend(loc=4)
+        ax_mabs.plot(1/J_fine, mabs_exact, c="black", label="analytic")
+        #ax_mabs.legend(loc=1)
         ax_mabs.grid(True)
-        singleax_mabs.scatter(J_array, data[:,2],
+        singleax_mabs.scatter(1/J_array, data[:,2],
                          s = 30,
                          edgecolor="none",
                          c = colors[i],
                          label = ("N = %d"%N))
-        singleax_mabs.plot(J_fine, mabs_exact, c="black", label="analytic")
-        singleax_mabs.set_xlim(min(J_array)-0.02,max(J_array)+0.02)
+        singleax_mabs.set_xlim(min(1/J_array)-0.02,max(1/J_array)+0.02)
         singleax_mabs.set_ylim(min(data[:,2])-0.02,max(data[:,2])+0.02)
-        singleax_mabs.set_xlabel("h", **font)
-        singleax_mabs.set_ylabel(r'$\langle m \rangle$', **font)
+        singleax_mabs.set_xlabel("$1/J$", **font)
+        singleax_mabs.set_ylabel(r'$\langle |m| \rangle$', **font)
         singleax_mabs.grid(True)
-        singleax_mabs.legend(loc=4)
+        singleax_mabs.legend(loc=1)
         # plot epsilon
         ax_eps = axs_eps[i//2,i%2]
         ax_eps.errorbar(J_array, data[:,4], data[:,5],
@@ -249,20 +248,22 @@ def Jplot(N_values, J_array):
                          capsize = 2,
                          capthick = 2)
         ax_eps.plot(J_fine, eps_exact, c="black", label="analytic")
-        ax_eps.legend(loc=4)
+        ax_eps.legend(loc=1)
         ax_eps.grid(True)
         singleax_eps.scatter(J_array, data[:,4],
                          s = 30,
                          edgecolor="none",
                          c = colors[i],
                          label = ("N = %d"%N))
-        singleax_eps.plot(J_fine, eps_exact, c="black", label="analytic")
         singleax_eps.set_xlim(min(J_array)-0.02,max(J_array)+0.02)
         singleax_eps.set_ylim(min(data[:,4])-0.02,max(data[:,4])+0.02)
-        singleax_eps.set_xlabel("h", **font)
-        singleax_eps.set_ylabel(r'$\langle m \rangle$', **font)
+        singleax_eps.set_xlabel("$J$", **font)
+        singleax_eps.set_ylabel(r'$\epsilon$', **font)
         singleax_eps.grid(True)
-        singleax_eps.legend(loc=4)
+        singleax_eps.legend(loc=1)
+    #analytic solutions
+    singleax_mabs.plot(1/J_fine, mabs_exact, c="black", label="analytic")
+    singleax_eps.plot(J_fine, eps_exact, c="black", label="analytic")
     multifig_mabs.tight_layout(rect=[0.04, 0.04, 1, 1])
     return singlefig_mabs, multifig_mabs, singlefig_eps, multifig_eps
 
@@ -270,18 +271,20 @@ def Jplot(N_values, J_array):
 
 
 Jc = 0.440686793509772
-Nmeas = 200
-Ntherm = 100
+Nmeas = 500
+Ntherm = 500
 nBS = 100
-N = [20]   
+N = [5,10,15,20]   
         
-#m_singlefig, m_multifig = mplot(0.3, N, np.linspace(-1,1,21))
-#m_multifig.savefig("m_multifig.pdf")
-#m_singlefig.savefig("m_singlefig.pdf")
+m_singlefig, m_multifig = mplot(0.3, N, np.linspace(-1,1,21))
+m_multifig.savefig("m_multi_j0.3.pdf")
+m_singlefig.savefig("m_single_j0.3.pdf")
 
 mabs_singlefig, mabs_multifig, eps_singlefig, eps_multifig = Jplot(N, np.linspace(0.25,2,21))
-#mabs_multifig.savefig("test1.pdf")
-#mabs_singlefig.savefig("test2.pdf")
+mabs_multifig.savefig("mabs_multi.pdf")
+mabs_singlefig.savefig("mabs_single.pdf")
+eps_multifig.savefig("eps_multi.pdf")
+eps_singlefig.savefig("eps_single.pdf")
 
 
 plt.show()
