@@ -9,16 +9,16 @@ h = 0.5     #coupling to extenal magnet field
 
 @jit(nopython=True)
 def H(p, phi):
-    return p**2/2 + phi**2/(2*beta*J) - N*np.log(2*np.cosh(beta*h+phi))
+    return p**2/2 + phi**2/(2*beta*J/N) - N*np.log(2*np.cosh(beta*h+phi))
 
 @jit(nopython=True)
 def leapfrog(p, phi, Nmd, N, J):
     eps = 1/Nmd
     phi += eps/2 * p
     for n in range(Nmd-1):
-        p -= eps*(phi/(beta*J) - N*np.tanh(beta*h+phi))
+        p -= eps*(phi*N/(beta*J) - N*np.tanh(beta*h+phi))
         phi += eps*p
-    p -= eps*(phi/(beta*J) - N*np.tanh(beta*h+phi))
+    p -= eps*(phi*N/(beta*J) - N*np.tanh(beta*h+phi))
     phi += eps/2*p
     return p, phi
 
@@ -51,7 +51,7 @@ def hcm(J, N, Ncfg, Ntherm, Nmd):
     phi = np.zeros(Ncfg+Ntherm)
     accept = np.zeros(Ncfg+Ntherm)
     #first sample random phi0?
-    phi[0] = np.random.normal(0,1)
+    phi[0] = 0
 
     for n in range(1, Ncfg+Ntherm+1):
         p0 = np.random.normal(0,1)
@@ -72,7 +72,7 @@ def simulate(J, N, Ncfg, Ntherm, Nmd):
 
     phi_conf, accept = hcm(J, N, Ncfg, Ntherm, Nmd)
     #and calculate m and eps
-    print(phi_conf)
+    #print(phi_conf)
 
     m = mag(phi_conf).mean()
     delm = bootstrap_error(mag(phi_conf), 100)
@@ -101,7 +101,7 @@ def simulate(J, N, Ncfg, Ntherm, Nmd):
 
 Ncfg = 500
 Ntherm = 1000
-Nmd = 200
+Nmd = 2000
 
 N = 5
 steps = 20
@@ -119,7 +119,7 @@ for i in range(steps):
     _, _, m[i], delm[i], eps[i], deleps[i], acc[i], m_exact[i], eps_exact[i] = simulate(J, N, Ncfg, Ntherm, Nmd)
 
 plt.figure()
-plt.errorbar(J_array, m, delm,linestyle="None")
+plt.errorbar(J_array, m, delm, linestyle="None")
 plt.plot(J_array, m_exact)
 plt.scatter(J_array, acc)
 plt.show()
