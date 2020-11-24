@@ -22,23 +22,19 @@ def leapfrog(p, phi, Nmd, pars):
 
 
 # test leapfrog
-N = 10
-beta = 1
-J = 0.5
-h = 0.5
-pars = (N, beta, J, h)
+def test_leapfrog(Nmd_max,pars):
+    N, beta, J, h = pars
+    p0, phi0 = 0, 0
+    H0 = H(p0,phi0,pars)
+    y = np.zeros(Nmd_max)
+    for i, Nmd in enumerate(range(1,Nmd_max+1)):
+        p, phi = leapfrog(p0, phi0, Nmd, pars)
+        y[i] = H(p,phi,pars)
+    y = (y-H0)/H0
 
-Nmd_max = 100
-p0, phi0 = 0, 0
-H0 = H(p0,phi0, pars)
-y = np.zeros(Nmd_max)
-for i, Nmd in enumerate(range(1,Nmd_max+1)):
-    p, phi = leapfrog(p0, phi0, Nmd, pars)
-    y[i] = H(p,phi,pars)
-y = (y-H0)/H0
+    plt.scatter(range(1,Nmd_max+1),y)
+    plt.yscale("log")
+    plt.ylim(1e-3,1e-1)
+    plt.show()
 
-plt.scatter(range(1,Nmd_max+1),y)
-plt.yscale("log")
-plt.ylim(1e-3,1e-1)
-plt.show()
-
+#test_leapfrog(100,(10,1,0.5,0.5))

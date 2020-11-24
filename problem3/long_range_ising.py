@@ -12,8 +12,17 @@ def metropolis_hastings_step(H, phi0, pars):
     else:
         return False, phi0
 
+def bootstrap_error(array, nBS):
+    # performs a bootstrap error estimation for an array, generating nBS bootstrap samples  
+    n = len(array)
+    bsmean = np.zeros(nBS)
+    for i in range(nBS):
+        indices = np.random.randint(n,size=n) # random bootstrap indices
+        bsmean[i] = array[indices].mean()
+    return bsmean.std()
+
 #@jit(nopython=True)
-def simulate(Ncfg, Ntherm, Nmd, pars):
+def simulate(Ncfg, Ntherm, Nmd, nBS, pars):
     N, beta, J, h = pars
     
     # thermalize
@@ -24,19 +33,21 @@ def simulate(Ncfg, Ntherm, Nmd, pars):
     phi_array = np.zeros(Ncfg)
     counter = 0
     for i in range(Ncfg):
-        accepted, phi = metropolis_hastings_step(H, phi0, pars)
+        accepted, phi_array[i] = metropolis_hastings_step(H, phi0, pars)
         if accepted:
             counter += 1
     
     counter /= Ncfg
     
-    m = np.tanh(beta*h+phi)
-    m = m.mean()
+    m = np.tanh(beta*h+phi_array)
+    dm = bootstrap_error(m, nBS)
+    m = np.mean(m)
     
-    eps = 1/(2*beta*N) - phi**2/(2*J*beta**2) - h*np.tanh(beta*h+phi)
-    eps = eps.mean()
+    eps = 1/(2*beta*N) - phi_array**2/(2*J*beta**2) - h*np.tanh(beta*h+phi_array)
+    deps = bootstrap_error(eps, nBS)
+    eps = np.mean(eps)
     
-    return m, eps
+    return m, dm, eps, deps, counter
     
 
 N = 10.
@@ -45,17 +56,22 @@ J = None
 h = 0.5
 pars = [N, beta, J, h]
 
-Ncfg = 1000
-Ntherm = 500
-Nmd = 2000
+Ncfg = 100
+Ntherm = 1000
+Nmd = 100
+nBS = 500
 
-m_array = np.zeros(20)
-eps_array = np.zeros(20)
+m = np.zeros(20)
+dm = m.copy()
+eps = m.copy()
+deps = m.copy()
+acceptance = m.copy()
 J_array = np.linspace(0.2,2,20)
 for i, J in enumerate(J_array):
     pars[2] = J
     
-    m_array[i], eps_array[i] = simulate(Ncfg, Ntherm, Nmd, pars)
+    m[i], dm[i], eps[i], deps[i], acceptance[i] = simulate(Ncfg, Ntherm, Nmd, nBS, pars)
 
-plt.scatter(J_array,m_array)
+plt.errorbar(J_array,m,dm)
+plt.scatter(J_array,acceptance)
 plt.show()
