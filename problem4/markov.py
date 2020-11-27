@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.special
+import matplotlib.pyplot as plt
 from numba import jit
 from leapfrog import H, leapfrog
 
@@ -51,11 +52,57 @@ def markov_chain(Ncfg, Ntherm, Nmd, pars, phi0=0.0):
     return counter, phi_array # return acceptance rate and markov_chain
     
 # N = 5 spins, beta = 1, J = 1, h = 0.5
-pars = (5, 1, 1, 0.5)
+n = 5
+beta = 1
+J = 1
+h = 0.5
+pars = (n, beta, J, h)
 
 N = 12800 #length of markov chain
 Ntherm = 10000 # more than enough thermalization steps
 
+# create markov chains
 acceptance_nmd4, phi_nmd4 = markov_chain(N, Ntherm, 4, pars)
 acceptance_nmd100, phi_nmd100 = markov_chain(N, Ntherm, 100, pars)
 
+# calculate magnetizationspytho
+m_nmd4 = np.tanh(beta*h+phi_nmd4)
+m_nmd100 = np.tanh(beta*h+phi_nmd100)
+
+# monte carlo time
+t = np.linspace(1, N+1, N)
+
+# plot first couple 100 values of m
+fig_mhistory = plt.figure()
+ax = plt.gca()
+
+tmax = 200 #number of values plotted
+ax.plot(t[:tmax], m_nmd4[:tmax],
+        label = "$N_\mathrm{md} = 4$",
+        linestyle = "none",
+        marker = "o",
+        markersize = 4,
+        color = "blue",
+        alpha = 0.5)
+
+ax.plot(t[:tmax], m_nmd100[:tmax],
+        label = "$N_\mathrm{md} = 100$",
+        linestyle = "none",
+        marker = "o",
+        markersize = 4,
+        color = "red",
+        alpha = 0.5)
+
+ax.set_xlabel("MC time $t$")
+ax.set_ylabel("MC history of $\{m\}$")
+ax.legend(loc=0)
+ax.grid(True)
+fig_mhistory.tight_layout()
+
+fig_mhistory.savefig("m_history.pdf")
+
+# estimate for m
+avg_m_nmd4 = m_nmd4.mean()
+avg_m_nmd100 = m_nmd100.mean()
+
+print(avg_m_nmd4, avg_m_nmd100)
