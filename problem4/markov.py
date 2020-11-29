@@ -54,7 +54,7 @@ def markov_chain(Ncfg, Ntherm, Nmd, pars, phi0=0.0):
 # N = 5 spins, beta = 1, J = 1, h = 0.5
 n = 5
 beta = 1
-J = 1
+J = 0.1
 h = 0.5
 pars = (n, beta, J, h)
 
@@ -65,7 +65,7 @@ Ntherm = 10000 # more than enough thermalization steps
 acceptance_nmd4, phi_nmd4 = markov_chain(N, Ntherm, 4, pars)
 acceptance_nmd100, phi_nmd100 = markov_chain(N, Ntherm, 100, pars)
 
-# calculate magnetizationspytho
+# calculate magnetizations
 m_nmd4 = np.tanh(beta*h+phi_nmd4)
 m_nmd100 = np.tanh(beta*h+phi_nmd100)
 
@@ -76,7 +76,7 @@ t = np.linspace(1, N+1, N)
 fig_mhistory = plt.figure()
 ax = plt.gca()
 
-tmax = 200 #number of values plotted
+tmax = 500 #number of values plotted
 ax.plot(t[:tmax], m_nmd4[:tmax],
         label = "$N_\mathrm{md} = 4$",
         linestyle = "none",
@@ -101,8 +101,46 @@ fig_mhistory.tight_layout()
 
 fig_mhistory.savefig("m_history.pdf")
 
-# estimate for m
-avg_m_nmd4 = m_nmd4.mean()
-avg_m_nmd100 = m_nmd100.mean()
+@jit(nopython=True)
+def autocorr(x):
+    """
+    calculates the autocorrelation function of a 1d-numpy array x
+    """
+    N = len(x)
+    mean = x.mean()
+    gamma = np.zeros(N) # array in which the autocorrelation is stored
+    gamma[0] = 1/N * np.sum( (x-mean)*(x-mean) )
+    for tau in range(1,N):
+        gamma[tau] = 1 / (N-tau) * np.sum( (x[:-tau]-mean) * (x[tau:]-mean) )
+    return gamma/gamma[0]
 
-print(avg_m_nmd4, avg_m_nmd100)
+# calculate autocorrelations    
+gamma_nmd4 = autocorr(m_nmd4)
+gamma_nmd100 = autocorr(m_nmd100)
+
+print(m_nmd4.mean(),m_nmd100.mean())
+
+
+# plot autocorrelation functions
+fig_autocorr = plt.figure()
+ax = plt.gca()
+
+tmax = 1000
+ax.plot(t[:tmax]-1, gamma_nmd4[:tmax],
+        label = "$N_\mathrm{md} = 4$",
+        linestyle = "none",
+        marker = "o",
+        markersize = 5)
+
+ax.plot(t[:tmax]-1, gamma_nmd100[:tmax],
+        label = "$N_\mathrm{md} = 100$",
+        linestyle = "none",
+        marker = "o",
+        markersize = 5)
+
+ax.set_xlabel(r"Time $\tau$")
+ax.set_ylabel(r"Normalized autocorrelation $C(\tau)$")
+ax.legend(loc=0)
+ax.grid(True)
+
+plt.show()
