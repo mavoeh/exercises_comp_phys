@@ -261,7 +261,7 @@ fig_naive_error.savefig("naive_standard_error.pdf")
 # plot nBS dependence of bootstrap error for all blocksizes
 fig_nbs_dependence = plt.figure()
 ax = plt.gca()
-nBS = np.arange(10, 151, 1)
+nBS = np.arange(10, 301, 1)
 for i, b in enumerate([1]+bs):
     error = np.zeros(len(nBS))
     for j, n in enumerate(nBS):
