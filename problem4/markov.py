@@ -110,8 +110,8 @@ class mchain:
         print("mean value of <m>: {0:.3f}\nstandard deviation of <m>: {1:.3f}\n".format(self.m.mean(),self.m.std()))
     
     def block(self, blocksizes):
-        self.blocked = {} # create disctionary to store blocked arrays
-        self.blocked_autocorr = {} # and theirs autocorrelations
+        self.blocked = {} # create dictionary to store blocked arrays
+        self.blocked_autocorr = {} # and their autocorrelations
         for bs in blocksizes:
             blocked = np.zeros(self.N//bs)
             slices = np.arange(0, N, bs, dtype=np.int) # equally spaced array by blocksize
@@ -137,8 +137,6 @@ class mchain:
         
 
 
-
-
 # now that the necessary functions are defined we can start generating and plotting the data
 
 # N = 5 spins, beta = 1, J = 0.1, h = 0.5
@@ -159,9 +157,6 @@ for Nmd in Nmds:
 
 # monte carlo time
 t = np.linspace(1, N+1, N)
-
-
-
 
 
 
@@ -215,19 +210,12 @@ fig_autocorr.tight_layout()
 fig_autocorr.savefig("m_autocorr.pdf")
 
 
-
-
-
-
 # from now on work with the Nmd = 100 data
 chain = chains[1]
 
 # calculate blocked arrays
 bs = [2,4,8,16,32,64]
 chain.block(bs)
-
-
-
 
 
 # plot autocorrelations of blocked lists
@@ -249,10 +237,6 @@ ax.grid(True)
 fig_blocked_autocorrs.tight_layout()
 
 fig_blocked_autocorrs.savefig("blocked_autocorrs.pdf")
-
-
-
-
 
 
 # plot naive standard error
