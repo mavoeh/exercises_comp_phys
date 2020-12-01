@@ -114,7 +114,7 @@ class mchain:
         self.blocked_autocorr = {} # and their autocorrelations
         for bs in blocksizes:
             blocked = np.zeros(self.N//bs)
-            slices = np.arange(0, N, bs, dtype=np.int) # equally spaced array by blocksize
+            slices = np.arange(0, self.N, bs, dtype=np.int) # equally spaced array by blocksize
             for index in range(bs):
                 blocked += self.m[slices+index] # iteratively calculate sum of blocks
             blocked /= bs # divide by blocksize
@@ -183,8 +183,6 @@ ax.grid(True)
 fig_mhistory.tight_layout()
 
 fig_mhistory.savefig("m_history.pdf")
-
-
 
 
 # now plot autocorrelation functions for the different Nmds
@@ -275,3 +273,46 @@ ax.grid(True)
 fig_nbs_dependence.tight_layout()
 
 fig_nbs_dependence.savefig("nbs_dependence.pdf")
+
+
+#Now plot the dependeceof the errors on the number of measurements N (bootsrap and naive) for block size 64
+# N = 5 spins, beta = 1, J = 0.1, h = 0.5
+n = 5
+beta = 1
+J = 0.1
+h = 0.5
+pars = (n, beta, J, h)
+Nmd = 100
+
+Ns = [12800, 19200, 25600, 32000, 64000, 96000] #length of markov chain
+Ntherm = 10000 # more than enough thermalization steps
+
+# create chain classes for the number of mol.dyn. steps in Nmds and store in list
+chains = []
+for N in Ns:
+    chains.append(mchain(N, Ntherm, Nmd, pars))
+
+b = [1, 2, 4, 8, 16, 32, 64] #block size
+Nbs = 250
+
+# plot N dependence of bootstrap error for all blocksizes
+fig_N_dependence = plt.figure()
+ax = plt.gca()
+error_boot = np.zeros(len(Ns))
+error_naive = np.zeros(len(Ns))
+for bs in b:
+    for j in range(len(Ns)):
+        chain = chains[j]
+        chain.block(b)
+        error_boot[j] = chain.bootstrap(bs, Nbs)
+        error_naive[j] = chain.blocked[bs].std() / np.sqrt(Ns[j]/bs)
+    ax.plot(Ns, error_boot, label = ("bootstrap, b=%d"%bs))
+    ax.plot(Ns, error_naive, label = ("naive error, b=%d"%bs))
+
+ax.set_xlabel(r"Number of measurements N$")
+ax.set_ylabel(r"Bootstrap error estimate $\delta m$")
+ax.legend(loc=0)
+ax.grid(True)
+fig_N_dependence.tight_layout()
+
+fig_N_dependence.savefig("N_dependence.pdf")
