@@ -13,7 +13,7 @@ def leapfrog(p, phi, Nmd, pars):
     # returns p_f and phi_f
     N, beta, J, h = pars
     eps = 1/Nmd
-    phi += eps/2
+    phi += eps*p/2.
     for i in range(Nmd-1):
         p -= eps*(phi*N/(beta*J) - N*np.tanh(beta*h+phi))
         phi += eps*p
