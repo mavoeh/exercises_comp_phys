@@ -1,0 +1,123 @@
+import numpy as np
+import scipy.special
+import matplotlib.pyplot as plt
+from numba import jit
+
+
+
+@jit(nopython=True)
+def H(u, a):
+    Ham = np.sum((u[1:] - u[:-1])**2)
+    return 1./a*Ham
+
+
+@jit(nopython=True)
+def metropolis_hastings_step(H, u, delta, a):
+    # perform the hmc metropolis hastings step
+    r = np.random.uniform(-1,1)
+    x = np.random.choice(np.arange(1, N-1, 1)) #u(0) = u(N)= 0
+    change = delta*r 
+    DeltaH = 2./a*(u[x]**2 - (u[x]+change)**2 + change*u[x-1] + change*u[x+1])
+    if np.random.uniform(0,1) <= np.exp(DeltaH):
+        # if accepted, return tuple with boolean value true if accepted
+        u[x] += change
+        return True, u # and new u
+    else:
+        return False, u # if rejected return False and old u
+
+@jit(nopython=True)
+def sweep(H, u, pars):
+    N, beta, a, delta = pars
+    counter = 0
+    for i in range(N-1):
+        c, u = metropolis_hastings_step(H, u, delta, a)
+        if c:
+            counter += 1
+    return counter, u
+
+
+def generate_markov_chain(Ncfg, Ntherm, pars, u0):
+    """
+    generate markov chain of length Ncfg using the metropolis hastings
+    accept reject N-1 times (sweep) for the gaussian model
+    
+    start at config u0 doing Ntherm sweeps without storing anything
+    
+    use parameters pars = (N, beta, delta, a)
+    
+    returns: 
+    (acceptance rate, markov chain)
+    tuple containing the acceptance rate and the markov chain
+    for the arrays u
+    """
+    
+    # assign parameters
+    N, beta, a, delta = pars
+    
+    # thermalize
+    for i in range(Ntherm):
+        _, u0 = sweep(H, u0, pars)
+    
+    # initialize array for phi values
+    u_list = []
+    counter = 0 # counter for acceptance rate
+    for i in range(Ncfg):
+        accepted, u = sweep(H, u0, pars)
+        u_list.append(u)
+        u0 = u_list[i]
+        counter += accepted
+    
+    counter /= Ncfg*(N-1) # normalize counter
+    
+    return counter, u_list # return acceptance rate and markov_chain
+
+
+
+#test markokv chain algorithm
+
+N = 64
+beta = 1.
+a = 1.
+delta = 2.
+pars = (N, beta, a, delta)
+
+Ncfg = 100
+Ntherm = 200
+
+u0 = np.zeros(N) 
+
+counter, u_list = generate_markov_chain(Ncfg, Ntherm, pars, u0)
+
+
+
+#calculate mean value for m and energy
+
+m_array = np.zeros(Ncfg)
+eps_array = np.zeros(Ncfg)
+
+# plot history of m and eps
+for i in range(Ncfg):
+    m_array[i] = 1./N*np.sum(u_list[i])
+    eps_array[i] = H(u_list[i], a)
+
+fig_mhistory = plt.figure()
+ax = plt.gca()
+
+ax.plot(np.arange(0, Ncfg, 1), eps_array,
+            linestyle = "none",
+            marker = "o",
+            markersize = 4,
+            alpha = 0.5)
+
+ax.set_xlabel("MC time $t$")
+ax.set_ylabel("MC history of $\{m\}$")
+ax.grid(True)
+fig_mhistory.tight_layout()
+
+fig_mhistory.savefig("m_history.pdf")
+
+m = 1./Ncfg*np.sum(m_array)
+eps = 1./Ncfg*np.sum(eps_array)
+
+
+print(m, eps)
