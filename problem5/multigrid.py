@@ -60,23 +60,48 @@ def generate_markov_chain(Ncfg, Ntherm, pars, u0):
 
     # initialize list for u arrays and arrays to store measurement for m and energy
     u_list = []
-    #m_array = np.zeros(Ncfg)
-    #eps_array = np.zeros(Ncfg)
     counter = 0 # counter for acceptance rate
     for i in range(Ncfg):
         accepted, u = sweep(u0, pars)
         u_list.append(list(u))
         u0 = np.array(u_list[i])
-        #m_array[i] = np.array(u_list[i]).mean()
-        #eps_array[i] = H(np.array(u_list[i]), a)
-
         counter += accepted
     
-    counter /= Ncfg*(N-1) # normalize counter
+    counter /= Ncfg*N # normalize counter
     
     return counter, u_list # return acceptance rate and markov_chain
 
 
+# only works if N is even -> then we have N+1 components in u
+def fine_to_coarse(u):
+    return u[::2]
+
+def coarse_to_fine(u):
+    u_fine = np.zeros(len(u)*2-1)
+    for i in range(len(u_fine)):
+        if i%2==0:
+            u_fine[i] = u[i//2]
+        else:
+            u_fine[i] = (u[(i-1)//2] + u[(i+1)//2])/2.
+
+    return u_fine
+
+
+def multigrid(pre, post, n, gamma, pars):
+    '''
+    Multigrid simulation algorithm in order to update u properly and then make a measurement for an observale
+    Input Paramters:
+        pre     number of sweeps pre-coarsening, array with number for each level 
+        post    number of sweeps post-coarsening, array with number for each level 
+        n       number of levels 
+        gamma   number of multigrid cycles in step 
+
+    Output:
+
+    
+    '''
+
+    return 0
 
 #test markokv chain algorithm
 
@@ -87,12 +112,11 @@ delta = 2.
 pars = (N, beta, a, delta)
 
 Ncfg = 10000
-Ntherm = 1000000
+Ntherm = 100000
 
-u0 = np.zeros(N)
+u0 = np.zeros(N+1)
 
 counter, u_list  = generate_markov_chain(Ncfg, Ntherm, pars, u0)
-
 
 #calculate mean value for m and energy
 m_array = np.zeros(Ncfg)
@@ -124,3 +148,4 @@ m = m_array.mean()
 eps = eps_array.mean()
 
 print(m, eps)
+
