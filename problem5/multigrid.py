@@ -89,12 +89,11 @@ def generate_markov_chain(Ncfg, Ntherm, pars, u0, phi):
 
 
 # only works if N is even -> then we have N+1 components in u
+@jit(nopython=True)
 def fine_to_coarse(u):
-    u = u[::2]
-    u[0] = 0
-    u[-1] = 0
-    return u
+    return u[::2]
 
+@jit(nopython=True)
 def coarse_to_fine(u):
     u_fine = np.zeros(len(u)*2-1)
     for i in range(len(u_fine)):
@@ -103,10 +102,29 @@ def coarse_to_fine(u):
         else:
             u_fine[i] = (u[(i-1)//2] + u[(i+1)//2])/2.
 
-    u_fine[0] = 0
-    u_fine[-1] = 0
-
     return u_fine
+
+@jit(nopython=True)
+def autocorr(x):
+    """
+    calculates the autocorrelation function of a 1d-numpy array x
+    """
+    N = len(x)
+    mean = x.mean()
+    gamma = np.zeros(N) # array in which the autocorrelation is stored
+    gamma[0] = 1/N * np.sum( (x-mean)*(x-mean) )
+    for tau in range(1,N):
+        gamma[tau] = 1 / (N-tau) * np.sum( (x[:-tau]-mean) * (x[tau:]-mean) )
+    return gamma/gamma[0]
+
+def bootstrap_error(array, nBS):
+    # performs a bootstrap error estimation for an array, generating nBS bootstrap samples  
+    n = len(array)
+    bsmean = np.zeros(nBS)
+    for i in range(nBS):
+        indices = np.random.randint(n,size=n) # random bootstrap indices
+        bsmean[i] = array[indices].mean()
+    return bsmean.std()
 
 
 def multigrid(pre, post, n, gamma, pars, u0, phi):
@@ -115,52 +133,43 @@ def multigrid(pre, post, n, gamma, pars, u0, phi):
     Input Paramters:
         pre     number of sweeps pre-coarsening, array with number for each level 
         post    number of sweeps post-coarsening, array with number for each level 
-        n       number of levels 
+        n       number of levels (initially finest level at n, coarsest at n=1)
         gamma   number of multigrid cycles in step 
         u       initial array on fine grid
+        phi     external field = 0 initially
 
     Output: array u for measurment 
     '''
-
     N, beta, a, delta = pars
 
-    #step1: pre pre-coarsening sweeps (i n==1, then coarsest level is reached -> skip to step 5)
-    if n != 1:
-        print("pre coarse sweep", n)
-        for j in range(pre[n-1]):
-            accepted, u = sweep(u0, pars, phi)
-            u0 = u
+    #step 1: pre coarsening sweeps, if NOT at the coarsest level (n = 1) 
+    if n > 1:
+        for k in range(pre[n-1]):
+            _, u0 = sweep(u0, pars, phi) 
 
-    #step 2: coarsening
-        print("coarsening to", n-1)
-        u_coarse = fine_to_coarse(u)
+    #step 2: coarseing to next coarser level        
+        u_coarse = np.zeros(N//2 +1)
+        phi_coarse = np.zeros(N//2 +1)
+        for i in range(1, len(phi_coarse)-1):
+            phi_coarse[i] = 1./4.*(phi[2*i+1] + 2*phi[i] + phi[2*i-1]) + 1./2./a**2*(2*u0[i] - u0[2*i+2]-u0[2*i-2])
+
         N = N//2
-        a *= 2
+        a = 2*a
         pars = (N, beta, a, delta)
-        phi_coarse = np.zeros(len(u_coarse))
-
-        for i in range(1, len(u_coarse)-1):
-            phi_coarse[i] = 1./4.*(phi[2*i+1]+2*phi[i]+phi[2*i-1]) + 1./2./a**2*(2*u[i] - u[2*i+2] - u[2*i-2])
-
         n -= 1
 
-    #step 3: recursion gamma times
-        print("recursion", n)
+    #step 3: recursive step, gamma times
         for g in range(gamma):
-            uc = multigrid(pre, post, n, gamma, pars, u_coarse, phi_coarse)
+            u_coarse = multigrid(pre, post, n, gamma, pars, u_coarse, phi_coarse)
 
-        n += 1
-    #step 4: updating current u(a)
-        print("prolongation to", n)
-        u += coarse_to_fine(uc)
+    #step 4: prolongation & correction to current level
+        u0 += coarse_to_fine(u_coarse)
 
-    #step 5: post post-prolongation sweeps at current level
-    print("post sweep", n)
-    for k in range(post[n-1]):
-        accepted, u = sweep(u0, pars, phi)
-        u0 = u
+    #step 5: post correction sweeps
+    for j in range(post[n-1]):
+        _, u0 = sweep(u0, pars, phi)
 
-    return u
+    return u0    
 
 '''
 #test markokv chain algorithm
@@ -184,12 +193,13 @@ m_array = np.zeros(Ncfg)
 eps_array = np.zeros(Ncfg)
 m2_array = np.zeros(Ncfg)
 
-#plot history of m and eps
+
 for i in range(Ncfg):
     m_array[i] = 1./N*np.array(u_list[i]).mean()
     eps_array[i] = H(np.array(u_list[i]), a, phi)
     m2_array[i] = 1./N*(np.array(u_list[i])**2).mean()
 
+#plot history of m and eps
 fig_mhistory = plt.figure()
 ax = plt.gca()
 
@@ -222,7 +232,10 @@ print(m2, delm2, "exact:", m2exact)
 print(eps, deleps, "exact:", epsexact)
 '''
 
-#test multigrid
+#test multigrid algorithm
+
+### THERE IS STILL A SEGFAULT IN MULTIGRID
+
 N = 64
 beta = 1.
 a = 1
@@ -235,11 +248,111 @@ n = 3
 pre = [4, 2, 1]
 post = [4, 2, 1]
 
+gamma = 1
+Nmeas = 100 #number of measurements
+
+u = np.zeros(N+1)
+u = multigrid(pre, post, n, gamma, pars, u, phi)
+
+'''
 #first for gamma = 1
 gamma = 1
 
+#calculate mean value for m and energy
+m_array = np.zeros(Nmeas)
+eps_array = np.zeros(Nmeas)
+m2_array = np.zeros(Nmeas)
+
+
 u = np.zeros(N+1)
+for i in range(Nmeas):
+    u = multigrid(pre, post, n, gamma, pars, u, phi)
+    m_array[i] = 1./N*u.mean()
+    eps_array[i] = H(u, a, phi)
+    m2_array[i] = 1./N*(u**2).mean()
 
-unew = multigrid(pre, post, n, gamma, pars, u, phi)
 
-#print(unew)
+m = m_array.mean()
+delm = bootstrap_error(m_array)
+m2 = m2_array.mean()
+delm2 = bootstrap_error(m2_array)
+eps = eps_array.mean()
+deleps = bootstrap_error(eps_array)
+
+
+m2exact = m_squared(pars)
+epsexact = energy(pars) 
+
+print(m, delm, "exact:", 0)
+print(m2, delm2, "exact:", m2exact)
+print(eps, deleps, "exact:", epsexact)
+
+#plot autocorr of m^2
+fig_m2corr = plt.figure()
+ax = plt.gca()
+
+ax.plot(np.arange(0, Nmeas, 1), autocorrelation(m2_array),
+            linestyle = "none",
+            marker = "o",
+            markersize = 4,
+            alpha = 0.5)
+
+ax.set_xlabel("MC time $t$")
+ax.set_ylabel("Autocorrelation of $\{m^2\}$")
+ax.grid(True)
+fig_m2corr.tight_layout()
+
+fig_m2corr.savefig("m2corr_1.pdf")
+
+
+#first for gamma = 2
+gamma = 2
+
+#calculate mean value for m and energy
+m_array = np.zeros(Nmeas)
+eps_array = np.zeros(Nmeas)
+m2_array = np.zeros(Nmeas)
+
+
+u = np.zeros(N+1)
+for i in range(Nmeas):
+    u = multigrid(pre, post, n, gamma, pars, u, phi)
+    m_array[i] = 1./N*u.mean()
+    eps_array[i] = H(u, a, phi)
+    m2_array[i] = 1./N*(u**2).mean()
+
+
+m = m_array.mean()
+delm = bootstrap_error(m_array)
+m2 = m2_array.mean()
+delm2 = bootstrap_error(m2_array)
+eps = eps_array.mean()
+deleps = bootstrap_error(eps_array)
+
+m2exact = m_squared(pars)
+epsexact = energy(pars) 
+
+print(m, delm, "exact:", 0)
+print(m2, delm2, "exact:", m2exact)
+print(eps, deleps, "exact:", epsexact)
+
+
+#plot autocorrelation of m^2
+
+fig_m2corr = plt.figure()
+ax = plt.gca()
+
+ax.plot(np.arange(0, Nmeas, 1), autocorrelation(m2_array),
+            linestyle = "none",
+            marker = "o",
+            markersize = 4,
+            alpha = 0.5)
+
+ax.set_xlabel("MC time $t$")
+ax.set_ylabel("Autocorrelation of $\{m^2\}$")
+ax.grid(True)
+fig_m2corr.tight_layout()
+
+fig_m2corr.savefig("m2corr_2.pdf")
+
+'''
