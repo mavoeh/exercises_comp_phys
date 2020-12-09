@@ -144,10 +144,12 @@ def multigrid(pre, post, n, gamma, pars, u0, phi):
 
     #step 1: pre coarsening sweeps, if NOT at the coarsest level (n = 1) 
     if n > 1:
+        print("pre sweeps", n)
         for k in range(pre[n-1]):
             _, u0 = sweep(u0, pars, phi) 
 
-    #step 2: coarseing to next coarser level        
+    #step 2: coarseing to next coarser level
+        print("coarseing to", n-1)        
         u_coarse = np.zeros(N//2 +1)
         phi_coarse = np.zeros(N//2 +1)
         for i in range(1, len(phi_coarse)-1):
@@ -159,13 +161,16 @@ def multigrid(pre, post, n, gamma, pars, u0, phi):
         n -= 1
 
     #step 3: recursive step, gamma times
+        print("recusive step at", n)
         for g in range(gamma):
             u_coarse = multigrid(pre, post, n, gamma, pars, u_coarse, phi_coarse)
 
     #step 4: prolongation & correction to current level
+        print("correction at", n+1)
         u0 += coarse_to_fine(u_coarse)
 
     #step 5: post correction sweeps
+    print("post sweeps", n+1)
     for j in range(post[n-1]):
         _, u0 = sweep(u0, pars, phi)
 
