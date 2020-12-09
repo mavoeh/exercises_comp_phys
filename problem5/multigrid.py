@@ -17,7 +17,7 @@ def H(u, a, phi):
 def m_squared(pars):
     N, beta, a, delta = pars
     k = np.arange(1, N, 1)
-    return 1./2.*(a/4./N/beta)*np.sum(1./np.sin(k*np.pi/2./N)**2)
+    return a/8./N/beta*np.sum(1./np.sin(k*np.pi/2./N)**2)
 
 #analytic solution for expectation value of energy
 @jit(nopython=True)
@@ -26,9 +26,9 @@ def energy(pars):
     return (N-1)/2./beta
 
 
-
 @jit(nopython=True)
-def metropolis_hastings_step(u, delta, a, phi):
+def metropolis_hastings_step(u, pars, phi):
+    N, beta, a, delta = pars
     # perform the hmc metropolis hastings step
     r = np.random.uniform(-1,1)
     x = np.random.choice(np.arange(1, N-1, 1)) #boundary conditions u(0) = u(N)= 0
@@ -45,8 +45,9 @@ def metropolis_hastings_step(u, delta, a, phi):
 def sweep(u, pars, phi):
     N, beta, a, delta = pars
     counter = 0
+    #do metropolis hastings step N-1 times
     for i in range(N-1):
-        c, u = metropolis_hastings_step(u, delta, a, phi)
+        c, u = metropolis_hastings_step(u, pars, phi)
         if c:
             counter += 1.
     return counter, u
@@ -144,12 +145,12 @@ def multigrid(pre, post, n, gamma, pars, u0, phi):
 
     #step 1: pre coarsening sweeps, if NOT at the coarsest level (n = 1) 
     if n > 1:
-        print("pre sweeps", n)
+        #print("pre sweeps", n)
         for k in range(pre[n-1]):
             _, u0 = sweep(u0, pars, phi) 
 
     #step 2: coarseing to next coarser level
-        print("coarseing to", n-1)        
+        #print("coarseing to", n-1)        
         u_coarse = np.zeros(N//2 +1)
         phi_coarse = np.zeros(N//2 +1)
         for i in range(1, len(phi_coarse)-1):
@@ -161,22 +162,23 @@ def multigrid(pre, post, n, gamma, pars, u0, phi):
         n -= 1
 
     #step 3: recursive step, gamma times
-        print("recusive step at", n)
+        #print("recusive step at", n)
         for g in range(gamma):
             u_coarse = multigrid(pre, post, n, gamma, pars, u_coarse, phi_coarse)
 
     #step 4: prolongation & correction to current level
-        print("correction at", n+1)
+        #print("correction at", n+1)
         u0 += coarse_to_fine(u_coarse)
 
     #step 5: post correction sweeps
-    print("post sweeps", n+1)
+    #print("post sweeps", n+1)
     for j in range(post[n-1]):
         _, u0 = sweep(u0, pars, phi)
 
     return u0    
 
-'''
+
+
 #test markokv chain algorithm
 
 N = 64
@@ -186,8 +188,8 @@ delta = 2.
 pars = (N, beta, a, delta)
 phi = np.zeros(N+1)
 
-Ncfg = 10000
-Ntherm = 100000
+Ncfg = 1000
+Ntherm = 1000
 
 u0 = np.zeros(N+1)
 
@@ -235,11 +237,10 @@ epsexact = energy(pars)
 print(m, delm, "exact:", 0)
 print(m2, delm2, "exact:", m2exact)
 print(eps, deleps, "exact:", epsexact)
-'''
+
 
 #test multigrid algorithm
 
-### THERE IS STILL A SEGFAULT IN MULTIGRID
 
 N = 64
 beta = 1.
@@ -253,13 +254,11 @@ n = 3
 pre = [4, 2, 1]
 post = [4, 2, 1]
 
-gamma = 1
+m2exact = m_squared(pars)
+epsexact = energy(pars) 
+
 Nmeas = 100 #number of measurements
 
-u = np.zeros(N+1)
-u = multigrid(pre, post, n, gamma, pars, u, phi)
-
-'''
 #first for gamma = 1
 gamma = 1
 
@@ -278,15 +277,12 @@ for i in range(Nmeas):
 
 
 m = m_array.mean()
-delm = bootstrap_error(m_array)
+delm = bootstrap_error(m_array,100)
 m2 = m2_array.mean()
-delm2 = bootstrap_error(m2_array)
+delm2 = bootstrap_error(m2_array,100)
 eps = eps_array.mean()
-deleps = bootstrap_error(eps_array)
+deleps = bootstrap_error(eps_array,100)
 
-
-m2exact = m_squared(pars)
-epsexact = energy(pars) 
 
 print(m, delm, "exact:", 0)
 print(m2, delm2, "exact:", m2exact)
@@ -296,7 +292,7 @@ print(eps, deleps, "exact:", epsexact)
 fig_m2corr = plt.figure()
 ax = plt.gca()
 
-ax.plot(np.arange(0, Nmeas, 1), autocorrelation(m2_array),
+ax.plot(np.arange(0, Nmeas, 1), autocorr(m2_array),
             linestyle = "none",
             marker = "o",
             markersize = 4,
@@ -310,7 +306,7 @@ fig_m2corr.tight_layout()
 fig_m2corr.savefig("m2corr_1.pdf")
 
 
-#first for gamma = 2
+#now for gamma = 2
 gamma = 2
 
 #calculate mean value for m and energy
@@ -328,14 +324,11 @@ for i in range(Nmeas):
 
 
 m = m_array.mean()
-delm = bootstrap_error(m_array)
+delm = bootstrap_error(m_array,100)
 m2 = m2_array.mean()
-delm2 = bootstrap_error(m2_array)
+delm2 = bootstrap_error(m2_array,100)
 eps = eps_array.mean()
-deleps = bootstrap_error(eps_array)
-
-m2exact = m_squared(pars)
-epsexact = energy(pars) 
+deleps = bootstrap_error(eps_array,100)
 
 print(m, delm, "exact:", 0)
 print(m2, delm2, "exact:", m2exact)
@@ -347,7 +340,7 @@ print(eps, deleps, "exact:", epsexact)
 fig_m2corr = plt.figure()
 ax = plt.gca()
 
-ax.plot(np.arange(0, Nmeas, 1), autocorrelation(m2_array),
+ax.plot(np.arange(0, Nmeas, 1), autocorr(m2_array),
             linestyle = "none",
             marker = "o",
             markersize = 4,
@@ -360,4 +353,5 @@ fig_m2corr.tight_layout()
 
 fig_m2corr.savefig("m2corr_2.pdf")
 
-'''
+
+### There is some mistake in the algorithm: the results are some orders of magnitude wrong
