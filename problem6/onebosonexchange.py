@@ -8,6 +8,7 @@ import numpy as np
 import math as m
 from numpy.polynomial.legendre import leggauss
 from scipy.special import legendre
+from scipy import interpolate
 
 
 class OBEpot:
@@ -290,12 +291,38 @@ class TwoBody:
     
     
         
-''' use esearch to find wave functions (evec) for certain cutoff Lambda
-    -> what is l, lz?
+''' use esearch to find wave functions (eivec) for certain cutoff Lambda
+    -> what is l, lz?: used here l=0 i think
 
     use scipy interpolate functions splrep and splev to get wave fct for pp - 1/2q
     
     integrate over x (using trev method, how???) -> with correct sph harmonics
 
     then sum over p -> F(q^2) '''
+
+
+#test here 
+
+e0 = -2.0/TwoBody.hbarc
+q = 1.0/TwoBody.hbarc 
+
+#find eigenfunctions psi
+pot = OBEpot(nx=24,mpi=138.0,C0=2*1e-2,A=-1.0/6.474860194946856,cutoff=1200.0)
+
+solver = TwoBody(pot, np1=20, np2=10, pa=1.0, pb=5.0, pc=20.0, mred=938.92/2,l=0,
+                   nr1=20, nr2=10, ra=1.0, rb=5.0, rc=20.0, 
+                   np1four=200,np2four=100)
+
+_, pgrid, psi = solver.eigv(e0, 100)
+
+print(psi)
+
+#interpolate psi 
+tck = interpolate.splrep(pgrid, psi, s=0)
+
+pnew = pgrid - 1./2.*q
+
+psinew = interpolate.splev(pnew, tck, der=0)
+
+print(psinew)
 
