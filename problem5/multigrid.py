@@ -143,11 +143,12 @@ def multigrid(pre, post, n, gamma, pars, u0, phi):
     '''
     N, beta, a, delta = pars
 
-    #step 1: pre coarsening sweeps, if NOT at the coarsest level (n = 1) 
-    if n > 1:
-        #print("pre sweeps", n)
-        for k in range(pre[n-1]):
+    #step 1: pre coarsening sweeps then proceed to step 2 if NOT at the coarsest level (n = 1) 
+    #print("pre sweeps", n)
+    for k in range(pre[n-1]):
             _, u0 = sweep(u0, pars, phi) 
+
+    if n > 1:        
 
     #step 2: coarseing to next coarser level
         #print("coarseing to", n-1)        
