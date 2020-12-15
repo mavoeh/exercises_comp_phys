@@ -8,9 +8,10 @@ import numpy as np
 import math as m
 from numpy.polynomial.legendre import leggauss
 import matplotlib.pyplot as plt
-from scipy.special import legendre
 import scipy.special
+from scipy.special import legendre
 from scipy import interpolate
+from scipy.optimize import curve_fit
 
 
 class OBEpot:
@@ -262,10 +263,10 @@ class TwoBody:
         # prepare matrix based on r,p points  
         rpmat = np.outer(self.rgrid,self.pfourgrid)
         # evaluate jl     
-        jlmat = spherical_jn(self.l,rpmat)
+        jlmat = scipy.special.spherical_jn(self.l,rpmat)
         
         # interpolate of wave to denser Fourier trafo grid
-        wfinter = interp1d(self.pgrid, wfp, kind='cubic',fill_value="extrapolate")
+        wfinter = interpolate.interp1d(self.pgrid, wfp, kind='cubic',fill_value="extrapolate")
         # interpolate wf and multiply my p**2*w elementwise 
         wfdense = wfinter(self.pfourgrid)*self.pfourgrid**2*self.pfourweight*np.sqrt(2/m.pi)
         
@@ -307,7 +308,7 @@ def formfactor(q, Lambda, C0, nang):
 
     '''find potential and solutiions of eigenvalue problem with parameters found in the lecture, that are
     numerically stable'''
-    pot = OBEpot(nx=20,mpi=138.0,C0=C0,A=-1.0/6.474860194946856,cutoff=Lambda)
+    pot = OBEpot(nx=nang,mpi=138.0,C0=C0,A=-1.0/6.474860194946856,cutoff=Lambda)
 
     solver = TwoBody(pot, np1=20, np2=10, pa=1.0, pb=7.0, pc=35.0, mred=938.92/2,l=0,
                    nr1=20, nr2=10, ra=1.0, rb=7.0, rc=35.0, 
@@ -323,7 +324,7 @@ def formfactor(q, Lambda, C0, nang):
 
     pgrid_new = pgrid - 1./2.*q
 
-    psi = interpolate.splev(pgrid_new, tck, der=0)
+    psinew = interpolate.splev(pgrid_new, tck, der=0)
 
 
     #find correct spherical harmonics
@@ -333,7 +334,7 @@ def formfactor(q, Lambda, C0, nang):
       return scipy.special.sph_harm(0, 0, phi, theta) #l = lz = 0
 
     def integral(x):
-      return np.real(psi*psistar*sph_harm_q(x)*scipy.special.sph_harm(0, 0, 0, np.arccos(x)))
+      return np.real(psinew*psistar*sph_harm_q(x)*scipy.special.sph_harm(0, 0, 0, np.arccos(x)))
 
     #Now integrate over x
     xgrid,xweight=leggauss(nang)
@@ -345,42 +346,93 @@ def formfactor(q, Lambda, C0, nang):
     #Now integrate over p prime
     F = np.sum(pweight*pgrid**2*integ)
 
-    return 2*np.pi*F
+
+    # Now: calculate expval of radius squared with wavefunctions obtained here
+
+    rgrid, wfr = solver.fourier(psi)
+
+    _, rsq = solver.rms(wfr) 
+
+    return 2*np.pi*F, rsq**2
 
 
 Lamlist = [300.0,400.0, 500.0,600.0, 700.0, 800.0, 900.0, 1000.0, 1100.0, 1200.0]
 C0list = [-9.827953e-02, -2.820315e-02, -4.221894e-04, 1.285743e-02, 2.016719e-02, 2.470795e-02, 2.786520e-02, 3.030801e-02, 3.239034e-02, 3.431611e-02]
 
-'''
 ###4. check numerical accuracy of result
 Lambda = Lamlist[-1]
 C0 = C0list[-1]
 
 #start with high q
 nangle = np.arange(10, 100, 10)
-qvec = np.arange(0, 10, 3)
+qvec = np.arange(0, 10, 11)
 
 for q in qvec:
   error = 1e-4
   prev  = 0
   print("q = ", q)
   for nang in nangle:
-    new = formfactor(q, Lambda, C0, nang)
-    if abs((new-prev)) < error:
+    new, _ = formfactor(q, Lambda, C0, 90)
+    #print(new)
+    if abs((new-prev)) > error:
       print("not stable for q, nang = ", q, nang)
       prev = new
-      
+
+# --> numerically unstable even for higher q (stability up to 1e-4 wanted). nang = 90 suffices
+    
+
+nang = 90
+
+###5. check for normalization and derivative
+
+Lambda = Lamlist[-1]
+C0 = C0list[-1]
+
+#calculated results
+print("F(0) = %s"%formfactor(0., Lambda, C0, nang)[0])
+print("<r^2> = %s"%(formfactor(0., Lambda, C0, nang)[1]))
 
 
-# --> numerically stable even for small q (up to 1e-4 and smaller). nang = 10 suffices
-'''
+#find radius squared from fit to data points
+def quadr(x, a, b, c, d):
+  return 1. -1./6.*a*x**2 + b*x**4 +c*x**6 + d*x**8
+
+qray = np.linspace(0, 10, 20)
+F = np.zeros(len(qray))
+
+for i,q in enumerate(qray):
+  F[i], _ = formfactor(q, Lambda, C0, nang)
+
+#perform fit using curve_fit function from scipy optimize
+par, error = curve_fit(quadr, qray, F)
+
+print(par[0], np.sqrt(error[0][0]))
+
+x = np.linspace(0, 10, 100)
+
+fig_radius = plt.figure()
+ax = plt.gca()
+  
+ax.plot(qray, F,
+        label = (r"calculated"),
+        marker = "o",
+        linestyle = "none")
+ax.plot(x, quadr(x, *par), label= "fit", linestyle = "-")
+
+ax.set_xlabel(r"momentum $q$")
+ax.set_ylabel(r"Formfactor $F(\vec{q}^2)$")
+ax.legend(loc=0)
+ax.grid(True)
+fig_radius.tight_layout()
+
+fig_radius.savefig("formfactor_radius.pdf")
+
 
 ###6. plot formfactors for several lambda 
 Lamshort = Lamlist[::2]
 C0short = C0list[::2]
 
 qray = np.linspace(1, 10, 50)
-nang = 10
 
 fig_lambda = plt.figure()
 ax = plt.gca()
@@ -388,7 +440,7 @@ ax = plt.gca()
 for i, Lambda in enumerate(Lamshort):
     F = np.zeros(len(qray))
     for j, q in enumerate(qray):
-      F[j] = formfactor(q, Lambda, C0short[i], nang)
+      F[j], _ = formfactor(q, Lambda, C0short[i], nang)
     ax.plot(qray**2, F,
             label = (r"$\Lambda = %s$"%Lambda),
             linestyle = "-")
@@ -400,4 +452,3 @@ ax.grid(True)
 fig_lambda.tight_layout()
 
 fig_lambda.savefig("formfactor_lambda.pdf")
-
