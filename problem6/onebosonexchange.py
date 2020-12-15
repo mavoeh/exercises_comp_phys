@@ -7,6 +7,7 @@
 import numpy as np
 import math as m
 from numpy.polynomial.legendre import leggauss
+import matplotlib.pyplot as plt
 from scipy.special import legendre
 import scipy.special
 from scipy import interpolate
@@ -291,22 +292,22 @@ class TwoBody:
         return norm,rms
 
 
-def formfactor(q, Lambda, nang):
+def formfactor(q, Lambda, C0, nang):
     ''' Computes Formfactor of deuterion as a function of the cutoff Lambda and energy-momentum of the 
     exchanged photon q^2
     input:
-    q         absolute value of vector q (in z direction). in 
+    q         absolute value of vector q (in z direction) in fm**-1
     Lambda    cutoff
+    C0        C0 found for Lambda
     nang      number of grid points for angular momentum integration
     
     '''
-
 
     #Find eigenfunctions psi 
 
     '''find potential and solutiions of eigenvalue problem with parameters found in the lecture, that are
     numerically stable'''
-    pot = OBEpot(nx=20,mpi=138.0,C0=2*1e-2,A=-1.0/6.474860194946856,cutoff=Lambda)
+    pot = OBEpot(nx=20,mpi=138.0,C0=C0,A=-1.0/6.474860194946856,cutoff=Lambda)
 
     solver = TwoBody(pot, np1=20, np2=10, pa=1.0, pb=7.0, pc=35.0, mred=938.92/2,l=0,
                    nr1=20, nr2=10, ra=1.0, rb=7.0, rc=35.0, 
@@ -342,12 +343,61 @@ def formfactor(q, Lambda, nang):
       integ += xweight[i] * integral(x)
 
     #Now integrate over p prime
-    F = 0
-
-    for i,p in enumerate(pgrid):
-      F += pweight[i] * p**2*integ[i]
+    F = np.sum(pweight*pgrid**2*integ)
 
     return 2*np.pi*F
 
 
-print(formfactor(0, 1200., 20))
+Lamlist = [300.0,400.0, 500.0,600.0, 700.0, 800.0, 900.0, 1000.0, 1100.0, 1200.0]
+C0list = [-9.827953e-02, -2.820315e-02, -4.221894e-04, 1.285743e-02, 2.016719e-02, 2.470795e-02, 2.786520e-02, 3.030801e-02, 3.239034e-02, 3.431611e-02]
+
+'''
+###4. check numerical accuracy of result
+Lambda = Lamlist[-1]
+C0 = C0list[-1]
+
+#start with high q
+nangle = np.arange(10, 100, 10)
+qvec = np.arange(0, 10, 3)
+
+for q in qvec:
+  error = 1e-4
+  prev  = 0
+  print("q = ", q)
+  for nang in nangle:
+    new = formfactor(q, Lambda, C0, nang)
+    if abs((new-prev)) < error:
+      print("not stable for q, nang = ", q, nang)
+      prev = new
+      
+
+
+# --> numerically stable even for small q (up to 1e-4 and smaller). nang = 10 suffices
+'''
+
+###6. plot formfactors for several lambda 
+Lamshort = Lamlist[::2]
+C0short = C0list[::2]
+
+qray = np.linspace(1, 10, 50)
+nang = 10
+
+fig_lambda = plt.figure()
+ax = plt.gca()
+
+for i, Lambda in enumerate(Lamshort):
+    F = np.zeros(len(qray))
+    for j, q in enumerate(qray):
+      F[j] = formfactor(q, Lambda, C0short[i], nang)
+    ax.plot(qray**2, F,
+            label = (r"$\Lambda = %s$"%Lambda),
+            linestyle = "-")
+
+ax.set_xlabel(r"momentum $q^2$")
+ax.set_ylabel(r"Formfactor $F(\vec{q}^2)$")
+ax.legend(loc=0)
+ax.grid(True)
+fig_lambda.tight_layout()
+
+fig_lambda.savefig("formfactor_lambda.pdf")
+
