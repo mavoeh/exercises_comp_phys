@@ -8,6 +8,7 @@ import numpy as np
 import math as m
 from numpy.polynomial.legendre import leggauss
 from scipy.special import legendre
+import scipy.special
 from scipy import interpolate
 
 
@@ -215,7 +216,7 @@ class TwoBody:
       norm=np.sum(wf**2*self.pweight[0:self.npoints]*self.pgrid[0:self.npoints]**2)
       wf=1/np.sqrt(norm)*wf
     
-      return eigv,self.pgrid[0:self.npoints],wf
+      return eigv,self.pgrid[0:self.npoints],self.pweight[0:self.npoints], wf
 
     
     def esearch(self,neigv=1,e1=-0.01,e2=-0.0105,elow=0.0,tol=1e-8):
@@ -231,8 +232,8 @@ class TwoBody:
            Energies are given in fm**-1. """
         
         # determine eigenvalues for starting energies        
-        eta1,pgrid,wf=self.eigv(e1,neigv)
-        eta2,pgrid,wf=self.eigv(e2,neigv)
+        eta1,pgrid,pweight,wf=self.eigv(e1,neigv)
+        eta2,pgrid,pweight,wf=self.eigv(e2,neigv)
         
         while abs(e1-e2) > tol: 
           # get new estimate (taking upper value into account)   
@@ -240,13 +241,13 @@ class TwoBody:
           enew=min(elow,enew)
        
           # get new eigenvalue and replace e1 and e2 for next iteration
-          eta,pgrid,wf=self.eigv(enew,neigv)
+          eta,pgrid,pweight,wf=self.eigv(enew,neigv)
           e2=e1
           eta2=eta1
           e1=enew
           eta1=eta 
             
-        return e1,eta1,pgrid,wf 
+        return e1,eta1,pgrid,pweight, wf 
            
     def fourier(self,wfp):
         """Calculates the Fourier transform of the partial wave representation of the wave function.
@@ -288,41 +289,65 @@ class TwoBody:
         rms=np.sqrt(rms)
         
         return norm,rms
+
+
+def formfactor(q, Lambda, nang):
+    ''' Computes Formfactor of deuterion as a function of the cutoff Lambda and energy-momentum of the 
+    exchanged photon q^2
+    input:
+    q         absolute value of vector q (in z direction). in 
+    Lambda    cutoff
+    nang      number of grid points for angular momentum integration
     
-    
-        
-''' use esearch to find wave functions (eivec) for certain cutoff Lambda
-    -> what is l, lz?: used here l=0 i think
-
-    use scipy interpolate functions splrep and splev to get wave fct for pp - 1/2q
-    
-    integrate over x (using trev method, how???) -> with correct sph harmonics
-
-    then sum over p -> F(q^2) '''
+    '''
 
 
-#test here 
+    #Find eigenfunctions psi 
 
-e0 = -2.0/TwoBody.hbarc
-q = 1.0/TwoBody.hbarc 
+    '''find potential and solutiions of eigenvalue problem with parameters found in the lecture, that are
+    numerically stable'''
+    pot = OBEpot(nx=20,mpi=138.0,C0=2*1e-2,A=-1.0/6.474860194946856,cutoff=Lambda)
 
-#find eigenfunctions psi
-pot = OBEpot(nx=24,mpi=138.0,C0=2*1e-2,A=-1.0/6.474860194946856,cutoff=1200.0)
-
-solver = TwoBody(pot, np1=20, np2=10, pa=1.0, pb=5.0, pc=20.0, mred=938.92/2,l=0,
-                   nr1=20, nr2=10, ra=1.0, rb=5.0, rc=20.0, 
+    solver = TwoBody(pot, np1=20, np2=10, pa=1.0, pb=7.0, pc=35.0, mred=938.92/2,l=0,
+                   nr1=20, nr2=10, ra=1.0, rb=7.0, rc=35.0, 
                    np1four=200,np2four=100)
 
-_, pgrid, psi = solver.eigv(e0, 100)
+    E, eE, pgrid, pweight, psi = solver.esearch(neigv=1,e1=-0.01,e2=-0.0105,elow=0.0,tol=1e-8)
 
-print(psi)
+    psistar = np.conj(psi)
 
-#interpolate psi 
-tck = interpolate.splrep(pgrid, psi, s=0)
+    #interpolate psi, so it fits grid for pp - 1/2 q
 
-pnew = pgrid - 1./2.*q
+    tck = interpolate.splrep(pgrid, psi, s=0)
 
-psinew = interpolate.splev(pnew, tck, der=0)
+    pgrid_new = pgrid - 1./2.*q
 
-print(psinew)
+    psi = interpolate.splev(pgrid_new, tck, der=0)
 
+
+    #find correct spherical harmonics
+    def sph_harm_q(x):
+      phi = 0
+      theta = np.arctan((pgrid*np.sqrt(1-x**2))/(pgrid*x-0.5*q))
+      return scipy.special.sph_harm(0, 0, phi, theta) #l = lz = 0
+
+    def integral(x):
+      return np.real(psi*psistar*sph_harm_q(x)*scipy.special.sph_harm(0, 0, 0, np.arccos(x)))
+
+    #Now integrate over x
+    xgrid,xweight=leggauss(nang)
+
+    integ = 0
+    for i, x in enumerate(xgrid):
+      integ += xweight[i] * integral(x)
+
+    #Now integrate over p prime
+    F = 0
+
+    for i,p in enumerate(pgrid):
+      F += pweight[i] * p**2*integ[i]
+
+    return 2*np.pi*F
+
+
+print(formfactor(0, 1200., 20))
