@@ -293,38 +293,25 @@ class TwoBody:
         return norm,rms
 
 
-def formfactor(q, Lambda, C0, nang, l, lz):
+def formfactor(q, pgrid, pweight, psi, nang, l, lz):
     ''' Computes Formfactor of deuterion as a function of the cutoff Lambda and energy-momentum of the 
     exchanged photon q^2
     input:
     q         absolute value of vector q (in z direction) in fm**-1
-    Lambda    cutoff
-    C0        C0 found for Lambda
+    pgrid     grid points for p
+    pweight   weights of pgrid
+    psi       wavefunction for certain Lambda
     nang      number of grid points for angular momentum integration
-    l, lz     angular momentum
+    l, lz     angular momentum (z comp)
     '''
 
-    #Find eigenfunctions psi 
-
-    '''find potential and solutiions of eigenvalue problem with parameters found in the lecture, that are
-    numerically stable'''
-    pot=OBEpot(nx=24,mpi=138.0,C0=C0,A=-1.0/6.474860194946856,cutoff=Lambda)
-    solver=TwoBody(pot=pot,np1=40,np2=20,pa=1.0,pb=7.0,pc=35.0,mred=938.92/2,l=l,
-                            nr1=40, nr2=20, ra=1.0, rb=5.0, rc=20.0, 
-                            np1four=400,np2four=200)
-
-    E, eE, pgrid, pweight, psi = solver.esearch(neigv=1,e1=-0.01,e2=-0.0105,elow=0.0,tol=1e-8)
 
     psistar = np.conj(psi)
 
-    #interpolate psi, so it fits grid for pp - 1/2 q
-    
     tck = interpolate.splrep(pgrid, psi, s=0)
 
-    pgrid_new = pgrid - 1./2.*q
+    pgrid_new = abs(pgrid - 1./2.*q)
     psinew = interpolate.splev(pgrid_new, tck, der=0)
-    #print(pgrid)
-  
 
     #find correct spherical harmonics
     def sph_harm_q(x):
@@ -347,68 +334,116 @@ def formfactor(q, Lambda, C0, nang, l, lz):
     #Now integrate over p prime
     F = np.sum(pweight*pgrid**2*integ)
 
-    # Now: calculate expval of radius squared with wavefunctions obtained here
-
-    rgrid, wfr = solver.fourier(psi)
-
-    _, rsq = solver.rms(wfr) 
-
-    return 2*np.pi*F, rsq**2
+    return 2*np.pi*F
 
 
 Lamlist = [300.0,400.0, 500.0,600.0, 700.0, 800.0, 900.0, 1000.0, 1100.0, 1200.0]
 C0list = [-9.827953e-02, -2.820315e-02, -4.221894e-04, 1.285743e-02, 2.016719e-02, 2.470795e-02, 2.786520e-02, 3.030801e-02, 3.239034e-02, 3.431611e-02]
-'''
+l = 0
+lz = 0
+
+psilist = []
+pgridlist = []
+pweightlist = []
+
+#extract pgrid, pweight and wave functions from data given
+pgrid, pweight, psi = np.loadtxt("data/wf-obe-lam=300.00.dat", skiprows = 2).transpose()
+psilist.append(psi)
+pgridlist.append(pgrid)
+pweightlist.append(pweight)
+pgrid, pweight, psi = np.loadtxt("data/wf-obe-lam=400.00.dat", skiprows = 2).transpose()
+psilist.append(psi)
+pgridlist.append(pgrid)
+pweightlist.append(pweight)
+pgrid, pweight, psi = np.loadtxt("data/wf-obe-lam=500.00.dat", skiprows = 2).transpose()
+psilist.append(psi)
+pgridlist.append(pgrid)
+pweightlist.append(pweight)
+pgrid, pweight, psi = np.loadtxt("data/wf-obe-lam=600.00.dat", skiprows = 2).transpose()
+psilist.append(psi)
+pgridlist.append(pgrid)
+pweightlist.append(pweight)
+pgrid, pweight, psi = np.loadtxt("data/wf-obe-lam=700.00.dat", skiprows = 2).transpose()
+psilist.append(psi)
+pgridlist.append(pgrid)
+pweightlist.append(pweight)
+pgrid, pweight, psi = np.loadtxt("data/wf-obe-lam=800.00.dat", skiprows = 2).transpose()
+psilist.append(psi)
+pgridlist.append(pgrid)
+pweightlist.append(pweight)
+pgrid, pweight, psi = np.loadtxt("data/wf-obe-lam=900.00.dat", skiprows = 2).transpose()
+psilist.append(psi)
+pgridlist.append(pgrid)
+pweightlist.append(pweight)
+pgrid, pweight, psi = np.loadtxt("data/wf-obe-lam=1000.00.dat", skiprows = 2).transpose()
+psilist.append(psi)
+pgridlist.append(pgrid)
+pweightlist.append(pweight)
+pgrid, pweight, psi = np.loadtxt("data/wf-obe-lam=1100.00.dat", skiprows = 2).transpose()
+psilist.append(psi)
+pgridlist.append(pgrid)
+pweightlist.append(pweight)
+pgrid, pweight, psi = np.loadtxt("data/wf-obe-lam=1200.00.dat", skiprows = 2).transpose()
+psilist.append(psi)
+pgridlist.append(pgrid)
+pweightlist.append(pweight)
+
+
+
 ###4. check numerical accuracy of result
-Lambda = Lamlist[-1]
-C0 = C0list[-1]
+
 
 #start with high q
 nangle = np.arange(10, 100, 10)
-qvec = np.arange(8, 10, 1)
+qvec = np.arange(0, 10, 1)
+error = 1e-6
 
 for q in qvec:
-  error = 1e-4
   prev  = 0
   print("q = ", q)
   for nang in nangle:
-    new, _ = formfactor(q, Lambda, C0, 90, 0, 0)
-    #print(new)
-    if abs((new-prev)) > error:
-      print("not stable for q, nang = ", q, nang)
+    new = formfactor(q, pgridlist[-1], pweightlist[-1], psilist[-1], nang, l, lz)
+    if abs(new-prev) > error:
+      print("not stable for q = %s, nang = %s"%(q, nang))
       prev = new
 
-# --> numerically unstable even for higher q (stability up to 1e-4 wanted). nang = 90 suffices
-    
+# --> numerically stable even for higher q (stability up to 1e-6). nang = 20 suffices
 
-nang = 90
+nang = 20
 
 ###5. check for normalization and derivative
 
-Lambda = Lamlist[-1]
-C0 = C0list[-1]
-
 #calculated results
-print("F(0) = %s"%formfactor(0., Lambda, C0, nang, 0, 0)[0])
-print("<r^2> = %s"%(formfactor(0., Lambda, C0, nang, 0, 0)[1]))
+F0 = formfactor(0., pgridlist[-1], pweightlist[-1], psilist[-1], nang, l, lz)
+print("F(0) = %s"%F0)
+
+pot=OBEpot(nx=24,mpi=138.0,C0=C0list[-1],A=-1.0/6.474860194946856,cutoff=Lamlist[-1])
+solver=TwoBody(pot=pot,np1=40,np2=20,pa=1.0,pb=7.0,pc=35.0,mred=938.92/2,l=0,
+                            nr1=40, nr2=20, ra=1.0, rb=5.0, rc=20.0, 
+                            np1four=400,np2four=200)
+
+rgrid, wfr = solver.fourier(psilist[-1])
+r2 = solver.rms(wfr)
+
+print("<r^2> = ", r2)
 
 
 #find radius squared from fit to data points
-def quadr(x, a, b, c, d):
-  return 1. -1./6.*a*x**2 + b*x**4 +c*x**6 + d*x**8
+def quadr(x, a, b, c):
+  return c + b*x - 1./6.*a*x**2 
 
-qray = np.linspace(0, 10, 20)
+qray = np.linspace(0, 3, 20)
 F = np.zeros(len(qray))
 
 for i,q in enumerate(qray):
-  F[i], _ = formfactor(q, Lambda, C0, nang, 0, 0)
+  F[i] = formfactor(q, pgridlist[-1], pweightlist[-1], psilist[-1], nang, l, lz)
 
 #perform fit using curve_fit function from scipy optimize
 par, error = curve_fit(quadr, qray, F)
 
 print(par[0], np.sqrt(error[0][0]))
 
-x = np.linspace(0, 10, 100)
+x = np.linspace(0, 3, 100)
 
 fig_radius = plt.figure()
 ax = plt.gca()
@@ -429,20 +464,17 @@ fig_radius.savefig("formfactor_radius.pdf")
 
 
 ###6. plot formfactors for several lambda 
-Lamshort = Lamlist[::2]
-C0short = C0list[::2]
-
-qray = np.linspace(1, 10, 50)
+qray = np.linspace(0, 10, 50)
 
 fig_lambda = plt.figure()
 ax = plt.gca()
 
-for i, Lambda in enumerate(Lamshort):
+for i in range(len(Lamlist)):
     F = np.zeros(len(qray))
     for j, q in enumerate(qray):
-      F[j], _ = formfactor(q, Lambda, C0short[i], nang, 0, 0)
+      F[j] = formfactor(q, pgridlist[i], pweightlist[i], psilist[i], nang, l, lz)
     ax.plot(qray**2, F,
-            label = (r"$\Lambda = %s$"%Lambda),
+            label = (r"$\Lambda = %s$"%Lamlist[i]),
             linestyle = "-")
 
 ax.set_xlabel(r"momentum $q^2$")
@@ -452,35 +484,3 @@ ax.grid(True)
 fig_lambda.tight_layout()
 
 fig_lambda.savefig("formfactor_lambda.pdf")
-'''
-
-
-#plot wavefunctions
-
-Lambda = Lamlist[-1]
-C0 = C0list[-1]
-l = 0
-
-#parameters from lecture
-pot=OBEpot(nx=24,mpi=138.0,C0=C0,A=-1.0/6.474860194946856,cutoff=Lambda)
-solver=TwoBody(pot=pot,np1=40,np2=20,pa=1.0,pb=7.0,pc=35.0,mred=938.92/2,l=l,
-                    nr1=40, nr2=20, ra=1.0, rb=5.0, rc=20.0, 
-                    np1four=400,np2four=200)
-
-E, eE, pgrid, pweight, psi = solver.esearch(neigv=1,e1=-0.01,e2=-0.0105,elow=0.0,tol=1e-8)
-
-#interpolate psi, so it fits grid for pp - 1/2 q
-tck = interpolate.splrep(pgrid, psi, s=0)
-qray = np.arange(0, 10, 1)
-
-plt.figure()
-
-for i,q in enumerate(qray):
-  pgrid_new = pgrid - 1./2.*q
-  psinew = interpolate.splev(pgrid_new, tck, der=0)
-
-  plt.plot(pgrid_new, psinew, label= ("%s"%q))
-
-
-plt.legend()
-plt.savefig("psinew.pdf")
