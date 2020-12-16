@@ -293,7 +293,7 @@ class TwoBody:
         return norm,rms
 
 
-def formfactor(q, Lambda, C0, nang):
+def formfactor(q, Lambda, C0, nang, l, lz):
     ''' Computes Formfactor of deuterion as a function of the cutoff Lambda and energy-momentum of the 
     exchanged photon q^2
     input:
@@ -301,42 +301,43 @@ def formfactor(q, Lambda, C0, nang):
     Lambda    cutoff
     C0        C0 found for Lambda
     nang      number of grid points for angular momentum integration
-    
+    l, lz     angular momentum
     '''
 
     #Find eigenfunctions psi 
 
     '''find potential and solutiions of eigenvalue problem with parameters found in the lecture, that are
     numerically stable'''
-    pot = OBEpot(nx=nang,mpi=138.0,C0=C0,A=-1.0/6.474860194946856,cutoff=Lambda)
-
-    solver = TwoBody(pot, np1=20, np2=10, pa=1.0, pb=7.0, pc=35.0, mred=938.92/2,l=0,
-                   nr1=20, nr2=10, ra=1.0, rb=7.0, rc=35.0, 
-                   np1four=200,np2four=100)
+    pot=OBEpot(nx=24,mpi=138.0,C0=C0,A=-1.0/6.474860194946856,cutoff=Lambda)
+    solver=TwoBody(pot=pot,np1=40,np2=20,pa=1.0,pb=7.0,pc=35.0,mred=938.92/2,l=l,
+                            nr1=40, nr2=20, ra=1.0, rb=5.0, rc=20.0, 
+                            np1four=400,np2four=200)
 
     E, eE, pgrid, pweight, psi = solver.esearch(neigv=1,e1=-0.01,e2=-0.0105,elow=0.0,tol=1e-8)
 
     psistar = np.conj(psi)
 
     #interpolate psi, so it fits grid for pp - 1/2 q
-
+    
     tck = interpolate.splrep(pgrid, psi, s=0)
 
     pgrid_new = pgrid - 1./2.*q
-
     psinew = interpolate.splev(pgrid_new, tck, der=0)
-
+    #print(pgrid)
+  
 
     #find correct spherical harmonics
     def sph_harm_q(x):
       phi = 0
-      theta = np.arctan((pgrid*np.sqrt(1-x**2))/(pgrid*x-0.5*q))
-      return scipy.special.sph_harm(0, 0, phi, theta) #l = lz = 0
+      theta = np.arccos((pgrid*x - 1./2.*q)/np.sqrt(pgrid**2*(1-x**2) + (pgrid*x - 1./2.*q)**2)) 
+      return scipy.special.sph_harm(lz, l, phi, theta) #l = lz = 0
 
     def integral(x):
-      return np.real(psinew*psistar*sph_harm_q(x)*scipy.special.sph_harm(0, 0, 0, np.arccos(x)))
+      return np.real(psinew*psistar*sph_harm_q(x)*scipy.special.sph_harm(lz, l, 0, np.arccos(x)))
 
     #Now integrate over x
+    #print(psinew)
+
     xgrid,xweight=leggauss(nang)
 
     integ = 0
@@ -345,7 +346,6 @@ def formfactor(q, Lambda, C0, nang):
 
     #Now integrate over p prime
     F = np.sum(pweight*pgrid**2*integ)
-
 
     # Now: calculate expval of radius squared with wavefunctions obtained here
 
@@ -358,21 +358,21 @@ def formfactor(q, Lambda, C0, nang):
 
 Lamlist = [300.0,400.0, 500.0,600.0, 700.0, 800.0, 900.0, 1000.0, 1100.0, 1200.0]
 C0list = [-9.827953e-02, -2.820315e-02, -4.221894e-04, 1.285743e-02, 2.016719e-02, 2.470795e-02, 2.786520e-02, 3.030801e-02, 3.239034e-02, 3.431611e-02]
-
+'''
 ###4. check numerical accuracy of result
 Lambda = Lamlist[-1]
 C0 = C0list[-1]
 
 #start with high q
 nangle = np.arange(10, 100, 10)
-qvec = np.arange(0, 10, 11)
+qvec = np.arange(8, 10, 1)
 
 for q in qvec:
   error = 1e-4
   prev  = 0
   print("q = ", q)
   for nang in nangle:
-    new, _ = formfactor(q, Lambda, C0, 90)
+    new, _ = formfactor(q, Lambda, C0, 90, 0, 0)
     #print(new)
     if abs((new-prev)) > error:
       print("not stable for q, nang = ", q, nang)
@@ -389,8 +389,8 @@ Lambda = Lamlist[-1]
 C0 = C0list[-1]
 
 #calculated results
-print("F(0) = %s"%formfactor(0., Lambda, C0, nang)[0])
-print("<r^2> = %s"%(formfactor(0., Lambda, C0, nang)[1]))
+print("F(0) = %s"%formfactor(0., Lambda, C0, nang, 0, 0)[0])
+print("<r^2> = %s"%(formfactor(0., Lambda, C0, nang, 0, 0)[1]))
 
 
 #find radius squared from fit to data points
@@ -401,7 +401,7 @@ qray = np.linspace(0, 10, 20)
 F = np.zeros(len(qray))
 
 for i,q in enumerate(qray):
-  F[i], _ = formfactor(q, Lambda, C0, nang)
+  F[i], _ = formfactor(q, Lambda, C0, nang, 0, 0)
 
 #perform fit using curve_fit function from scipy optimize
 par, error = curve_fit(quadr, qray, F)
@@ -440,7 +440,7 @@ ax = plt.gca()
 for i, Lambda in enumerate(Lamshort):
     F = np.zeros(len(qray))
     for j, q in enumerate(qray):
-      F[j], _ = formfactor(q, Lambda, C0short[i], nang)
+      F[j], _ = formfactor(q, Lambda, C0short[i], nang, 0, 0)
     ax.plot(qray**2, F,
             label = (r"$\Lambda = %s$"%Lambda),
             linestyle = "-")
@@ -452,3 +452,35 @@ ax.grid(True)
 fig_lambda.tight_layout()
 
 fig_lambda.savefig("formfactor_lambda.pdf")
+'''
+
+
+#plot wavefunctions
+
+Lambda = Lamlist[-1]
+C0 = C0list[-1]
+l = 0
+
+#parameters from lecture
+pot=OBEpot(nx=24,mpi=138.0,C0=C0,A=-1.0/6.474860194946856,cutoff=Lambda)
+solver=TwoBody(pot=pot,np1=40,np2=20,pa=1.0,pb=7.0,pc=35.0,mred=938.92/2,l=l,
+                    nr1=40, nr2=20, ra=1.0, rb=5.0, rc=20.0, 
+                    np1four=400,np2four=200)
+
+E, eE, pgrid, pweight, psi = solver.esearch(neigv=1,e1=-0.01,e2=-0.0105,elow=0.0,tol=1e-8)
+
+#interpolate psi, so it fits grid for pp - 1/2 q
+tck = interpolate.splrep(pgrid, psi, s=0)
+qray = np.arange(0, 10, 1)
+
+plt.figure()
+
+for i,q in enumerate(qray):
+  pgrid_new = pgrid - 1./2.*q
+  psinew = interpolate.splev(pgrid_new, tck, der=0)
+
+  plt.plot(pgrid_new, psinew, label= ("%s"%q))
+
+
+plt.legend()
+plt.savefig("psinew.pdf")
