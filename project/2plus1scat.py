@@ -301,8 +301,11 @@ class TwoBody:
 # next extend the class for twobody to scattering 
 
 
+# next extend the class for twobody to scattering 
+from scipy.special import legendre
+
 class TwoBodyTMat(TwoBody):
-    """This class defines the off-shell t-matrix for a three-body bound state.
+    """This class defines the off-shell t-matrix for a three-body scattering state.
     
        The class assumes three identical particles. It also contains the 
        initialization of grid points for the three-body problem. 
@@ -377,7 +380,23 @@ class TwoBodyTMat(TwoBody):
         # store grid points and weights for Fourier trafo 
         self.qfourgrid,self.qfourweight = self._trns(self.np1four,self.np2four,self.qa,self.qb,self.qc)
         
+        # finally extend p grid points to treat on-shell point 
+        # append one momentum to grid for the onshell value
+        # value will be defined during solution in lseq below
+        self.pgrid=np.append(self.pgrid,[0.0])
+
+        # also the on-shell momentum of the 2-1 scattering state is added as 
+        # the last momentum of the q array
+        # value will be defined during solution in lseq below
+        self.qgrid=np.append(self.qgrid,[0.0])
+
+        # finally, we assume that the two-body system only has an s-wave bound state. 
+        # we determine the corresponding energy and wave function 
         
+        # perform energy search for this parameter set
+        self.ed,lam,pmom,self.wfd=self.esearch(neigv=1,e1=-2.0/self.hbarc,e2=-2.5/self.hbarc)
+
+        print("Initialized two-body t-matrix. Found two-body energy: {0:15.6e} MeV".format(self.ed*self.hbarc))
         
 # now turn to scattering and solve for LS equation to get tmatrix (on- and offshell)
     def prep_tmat(self,E):
@@ -385,37 +404,80 @@ class TwoBodyTMat(TwoBody):
       
          Starts the calculation of the t-matrix for a given three-body energy. 
       """  
+      # find the corresponding on-shell momentum in the 2+1 system 
+      # qon should be positive (threshold is self.ed)
+      qon=np.sqrt(4*self.mass/3*(E-self.ed))
+      self.qgrid[self.nqpoints]=qon 
+    
+      print("Start calculating tmatrix for on-shell momentum q0 = {0:15.6e} fm-1".format(qon))
+        
       # prepare off-shell energies for t-matrix 
       etmat=E-0.75*self.qgrid**2/self.mass   # note that this is a negative energy < E_b(two-body) 
              
       # prepare numpy array that keeps all tmatrix elements 
-      tmat=np.empty((self.lmax+1,self.nqpoints,self.npoints,self.npoints),dtype=np.double)
+      # put to zero to treat pon for negative energies properly
+      tmat=np.zeros((self.lmax//2+1,self.nqpoints+1,self.npoints+1,self.npoints+1),dtype=np.cdouble)
       
       # now I need to solve the Lippmann-Schwinger equation for each etmat and each l =0,..,lmax
-      for l in range(self.lmax+1):
-        for ie in range(self.nqpoints): 
+      # take only even partial waves because of Pauli principle  
+      for l in range(0,self.lmax+1,2):
+        print("Calculating for l = {0:d}".format(l))    
+        for ie in range(self.nqpoints+1): 
+          # on-shell momentum for this off-shell energy
+          if etmat[ie] > 0:
+           pon=np.sqrt(2*self.mred*etmat[ie])
+           self.pgrid[self.npoints]=pon
+          else:
+           pon=0.0
+           self.pgrid[self.npoints]=pon
             
           # define matrix for set of equations 
           # predefine the Kronecker deltas 
-          amat=np.identity(self.npoints,dtype=np.double)
-          # now add the second part of the definition of the matrix   
-          for i in range(self.npoints):
-            for j in range(self.npoints):   
-              amat[i,j]+=-self.pot.v(self.pgrid[i],self.pgrid[j],l)*self.pgrid[j]**2 \
-                               /(etmat[ie]-self.pgrid[j]**2/(2*self.mred))*self.pweight[j]  \
+          amat=np.identity(self.npoints+1,dtype=np.cdouble)
+          # now add the other pieces of the definition of the matrix   
+          for i in range(self.npoints+1):
+            # first for j != N 
+            if self.pgrid[i]>0:
+             for j in range(self.npoints):   
+              amat[i,j]+=-(2*self.mred)*self.pot.v(self.pgrid[i],self.pgrid[j],self.l)*self.pgrid[j]**2 \
+                               /(2*self.mred*etmat[ie]-self.pgrid[j]**2)*self.pweight[j] 
+            # then for j==N
+            if self.pgrid[i]>0 and pon>0:
+             amat[i,self.npoints]  \
+               +=(2*self.mred)*self.pot.v(self.pgrid[i],pon,self.l)*pon**2* \
+                  np.sum(self.pweight[0:self.npoints-1]/(pon**2-self.pgrid[0:self.npoints-1]**2))  \
+                 +1j*m.pi*self.mred*pon*self.pot.v(self.pgrid[i],pon,self.l)  \
+                -self.mred*pon*self.pot.v(self.pgrid[i],pon,self.l)*np.log(abs((pon+self.pc)/(self.pc-pon)))
         
           # now define the rhs   
-          bmat=np.empty((self.npoints,self.npoints),dtype=np.double)
-          for i in range(self.npoints):
-           for j in range(self.npoints):   
-             bmat[i,j]=self.pot.v(self.pgrid[i],self.pgrid[j],l)
-            
-          # finally solve set of equations and store in complete array 
-          tmat[l,ie,:,:]=np.linalg.solve(amat,bmat)
-        
-      # return onshell matrix element  
+          bmat=np.empty((self.npoints+1,self.npoints+1),dtype=np.cdouble)
+          for i in range(self.npoints+1):
+            for j in range(self.npoints+1):
+               if self.pgrid[i]>0 and self.pgrid[j]>0:
+                 bmat[i,j]=self.pot.v(self.pgrid[i],self.pgrid[j],self.l)
+               else:
+                 bmat[i,j]=0.0
+                    
+          # finally solve set of equations and store in complete array
+          # also multiply by (q0**2-q)
+          # special treatment for l=0 and q=q0 (in this case, the equation is not solvable 
+          # but the t matrix is analytically known, etmat is negative = Ed in this case)
+          if l==0 and ie==self.nqpoints:
+            # use tilde t = (Ed-H0)|phi> <phi|(E-H0)     
+            for i in range(self.npoints):
+              for j in range(self.npoints):
+                tmat[l//2,ie,i,j]=(self.ed-self.pgrid[i]**2/self.mass)  \
+                                       *self.wfd[i]*self.wfd[j] \
+                                       *(self.ed-self.pgrid[j]**2/self.mass)
+          else:      
+            tmat[l//2,ie,:,:]=np.linalg.solve(amat,bmat)*0.75*(qon**2-self.qgrid[ie]**2)/self.mass
+                      
+      print("Finished calculating tmatrix for on-shell momentum q0 = {0:15.6e} fm-1".format(self.qgrid[self.nqpoints]))
+
+      # return on- and off-shell t-matrix   
       return tmat
             
+
 
 # prepare interpolation using cubic hermitian splines 
 
