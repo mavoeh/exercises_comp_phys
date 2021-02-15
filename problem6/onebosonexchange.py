@@ -4,6 +4,8 @@
 # for simplicity, we define the OBE exchange by numerical integration 
 # and add one contact term to be determined using either a bound state or a scattering length 
 
+#CORRECTED version
+
 import numpy as np
 import math as m
 from numpy.polynomial.legendre import leggauss
@@ -310,9 +312,6 @@ def formfactor(q, pgrid, pweight, psi, nang, l, lz):
 
     tck = interpolate.splrep(pgrid, psi, s=0)
 
-    pgrid_new = abs(pgrid - 1./2.*q)
-    psinew = interpolate.splev(pgrid_new, tck, der=0)
-
     #find correct spherical harmonics
     def sph_harm_q(x):
       phi = 0
@@ -320,6 +319,8 @@ def formfactor(q, pgrid, pweight, psi, nang, l, lz):
       return scipy.special.sph_harm(lz, l, phi, theta) #l = lz = 0
 
     def integral(x):
+      pgrid_new = np.sqrt((pgrid*np.sqrt(1-x**2))**2 + (pgrid*x - 0.5*q)**2)
+      psinew = interpolate.splev(pgrid_new, tck, der=0)
       return np.real(psinew*psistar*sph_harm_q(x)*scipy.special.sph_harm(lz, l, 0, np.arccos(x)))
 
     #Now integrate over x
@@ -407,9 +408,9 @@ for q in qvec:
       print("not stable for q = %s, nang = %s"%(q, nang))
       prev = new
 
-# --> numerically stable even for higher q (stability up to 1e-6). nang = 20 suffices
+# --> numerically stable even for higher q (stability up to 1e-6). nang = 90 suffices
 
-nang = 20
+nang = 90
 
 ###5. check for normalization and derivative
 
@@ -429,10 +430,10 @@ print("<r^2> = ", r2)
 
 
 #find radius squared from fit to data points
-def quadr(x, a, b, c):
-  return c + b*x - 1./6.*a*x**2 
+def quadr(x, a):
+  return 1. - 1./6.*a*x**2 
 
-qray = np.linspace(0, 3, 20)
+qray = np.linspace(0, 1, 20)
 F = np.zeros(len(qray))
 
 for i,q in enumerate(qray):
@@ -443,7 +444,7 @@ par, error = curve_fit(quadr, qray, F)
 
 print(par[0], np.sqrt(error[0][0]))
 
-x = np.linspace(0, 3, 100)
+x = np.linspace(0, 1, 100)
 
 fig_radius = plt.figure()
 ax = plt.gca()
