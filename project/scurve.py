@@ -20,11 +20,11 @@ def scurve(theta1, theta2, phi, Elab, m = 938.92, e = -2.225, N = 10**5+1, deg =
                 
     returns: S, k1, k2
     
-    S   -   arclength of the ellipse in energy space
-            (starting point defined as in [1])          <-- starting point not fully implemented yet!
-    k1  -   absolute value of the momentum of particle 1 at the
+    S   -   Arclength of the ellipse in energy space.
+            Starting point defined as in [1] (p.127 and App.B)      <-- starting point not fully implemented yet!
+    k1  -   Absolute value of the momentum of particle 1 at the
             corresponding value of S
-    k2  -   absolute value of the momentum of particle 2 at the
+    k2  -   Absolute value of the momentum of particle 2 at the
             corresponding value of S
     ___________________________________________________________________
     
