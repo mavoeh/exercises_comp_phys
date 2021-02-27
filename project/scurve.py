@@ -17,6 +17,8 @@ def scurve(theta1, theta2, phi, Elab, m = 938.92, e = -2.225, N = 10**5+1, deg =
                 (Note that if the ellipse is partially negative in
                 k1 or k2, due to removal of the unphysical values
                 the returned S curve contains less points.)
+    deg     -   Boolean value: if True, the input angles should be
+                given in degree, if False angles should be in radian.
                 
     returns: S, k1, k2
     
