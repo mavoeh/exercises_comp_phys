@@ -1,8 +1,39 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-
-def scurve(theta1, theta2, phi, k0 = 12.256, m = 939, e = 2.225, N = 10**5+1, deg = True):
+def scurve(theta1, theta2, phi, Elab, m = 938.92, e = -2.225, N = 10**5+1, deg = False):
+    """
+    Calculates the S curve for a given set of scattering
+    angles and energy of the incoming particle
+    
+    theta1  -   Scattering angle of particle 1 relative to z-axis.
+    theta2  -   Scattering angle of particle 2 relative to z-axis.
+    phi     -   Difference between scattering angles of.
+                Particles 1 and 2 in the x-y-plane.
+    Elab    -   Energy of the incoming particle.
+    m       -   Mass of the particles.
+    e       -   Binding energy of the two-body bound state.
+    N       -   Number of points for discretization of the ellipse.
+                (Note that if the ellipse is partially negative in
+                kx or ky, due to removal of the unphysical values,
+                the returned S curve contains less points.)
+                
+    returns: S, k1, k2
+    
+    S   -   arclength of the ellipse in energy space
+            (starting point defined as in [1])          <-- starting point not fully implemented yet!
+    k1  -   absolute value of the momentum of particle 1 at the
+            corresponding value of S
+    k2  -   absolute value of the momentum of particle 2 at the
+            corresponding value of S
+    ___________________________________________________________________
+    
+    [1] -   W. Glöckle, H. Witala, D. Hüber, H. Kamada, and J. Golak,
+            "The Three nucleon continuum: Achievements, challenges
+             and applications" Phys. Rept. 274 (1996) 107–285.
+    """
+    # calculate momentum of incoming particle from its energy
+    k0 = np.sqrt(2*938.92*Elab)
     
     # transform input angles to radian if deg is True
     if deg == True:
@@ -17,9 +48,13 @@ def scurve(theta1, theta2, phi, k0 = 12.256, m = 939, e = 2.225, N = 10**5+1, de
     # define theta_m and theta_p to distinguish between different cases
     theta_m = np.arccos(np.sqrt(4*m*np.abs(e)/k0**2))
     theta_p = -np.arccos(np.sqrt(4*m*np.abs(e)/k0**2))+np.pi
-    
+    """
+    ###########test
+    theta1 = theta_m+0.01
+    theta2 = theta_m+0.01
+    """
     # check if the set of input angles is mathematically allowed
-    if np.abs(theta1-np.pi/2)**2 + np.abs(theta2-np.pi/2)**2 < (theta_p+theta_m)/2:
+    if (theta1-np.pi/2)**2 + (theta2-np.pi/2)**2 < (theta_p-np.pi/2)**2:
         raise ValueError("Configuration of scattering angles mathematically forbidden!")
     
     # check if input angles yield positive momenta
@@ -38,11 +73,6 @@ def scurve(theta1, theta2, phi, k0 = 12.256, m = 939, e = 2.225, N = 10**5+1, de
     # (ellipse is already rotated by -pi/4)
     t0 = -np.pi/2
     
-    # if the ellipse lies completely above kx-axis
-    # but is partially negative in ky, start at the bottom
-    if theta2 < theta_m:
-        t0 = -np.pi/4
-    
     # now calculate parametrization
     t = np.linspace(t0, t0+2*np.pi, N)
     k = np.zeros((N,2))
@@ -51,28 +81,38 @@ def scurve(theta1, theta2, phi, k0 = 12.256, m = 939, e = 2.225, N = 10**5+1, de
     
     # select only physically relevant values
     mask = (k[:,0] >= 0) & (k[:,1] >= 0)
-    kx = k[:,0][mask]
-    ky = k[:,1][mask]
+    k1 = k[:,0][mask]
+    k2 = k[:,1][mask]
     
     indices = np.array(np.where(mask)[0]) # array of indices where kx and ky both positive
     #print(len(indices)==max(indices)-min(indices)+1)
     
     # calculate the arclength corresponding to the point (kx,ky)
-    S = np.zeros(kx.shape)
-    S[1:] = np.cumsum( np.sqrt( (kx[1:]-kx[:-1])**2 + (ky[1:]-ky[:-1])**2 ) \
+    S = np.zeros(k1.shape)
+    S[1:] = np.cumsum( np.sqrt( k1[1:]**2*(k1[1:]-k1[:-1])**2 + k2[1:]**2*(k2[1:]-k2[:-1])**2 )/m \
     * np.floor(1/(indices[1:]-indices[:-1])) # <- this line = 0, if there is a discontinuity in
     )                                        # kx or ky, due to removal of unpysical values,
-                                             # so that S does not get increased, = 1 else
-    return S, kx, ky
+                                             # so that S does not get increased; = 1 else
+    return S, k1, k2
     
 
-S, kx, ky = scurve(35,0,90,1,1,-0.18)
-n = np.linspace(0,1,len(S))
+#S, kx, ky = scurve(35,0,90,1,1,-0.18,deg=True)
+
+S, kx, ky = scurve(41.9,41.9,180,22.7,deg=True)
+print(S[-1])
+
+S, kx, ky = scurve(44,44,180,65,deg=True)
+print(S[-1])
+
+S, kx, ky = scurve(20,116.2,180,65,deg=True)
+print(S[-1])
 
 plt.plot(kx, ky)
 plt.gca().axis('equal')
 plt.scatter(kx[0],ky[0])
+n = np.linspace(0,max(kx),len(S))
 plt.plot(n, S)
+
 plt.show()
 
 """
