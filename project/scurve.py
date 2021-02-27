@@ -15,7 +15,7 @@ def scurve(theta1, theta2, phi, Elab, m = 938.92, e = -2.225, N = 10**5+1, deg =
     e       -   Binding energy of the two-body bound state.
     N       -   Number of points for discretization of the ellipse.
                 (Note that if the ellipse is partially negative in
-                kx or ky, due to removal of the unphysical values,
+                k1 or k2, due to removal of the unphysical values
                 the returned S curve contains less points.)
                 
     returns: S, k1, k2
@@ -23,9 +23,9 @@ def scurve(theta1, theta2, phi, Elab, m = 938.92, e = -2.225, N = 10**5+1, deg =
     S   -   Arclength of the ellipse in energy space.
             Starting point defined as in [1] (p.127 and App.B)      <-- starting point not fully implemented yet!
     k1  -   Absolute value of the momentum of particle 1 at the
-            corresponding value of S
+            corresponding value of S.
     k2  -   Absolute value of the momentum of particle 2 at the
-            corresponding value of S
+            corresponding value of S.
     ___________________________________________________________________
     
     [1] -   W. Glöckle, H. Witala, D. Hüber, H. Kamada, and J. Golak,
@@ -87,11 +87,11 @@ def scurve(theta1, theta2, phi, Elab, m = 938.92, e = -2.225, N = 10**5+1, deg =
     indices = np.array(np.where(mask)[0]) # array of indices where kx and ky both positive
     #print(len(indices)==max(indices)-min(indices)+1)
     
-    # calculate the arclength corresponding to the point (kx,ky)
+    # calculate the arclength corresponding to the point (k1,k2)
     S = np.zeros(k1.shape)
     S[1:] = np.cumsum( np.sqrt( k1[1:]**2*(k1[1:]-k1[:-1])**2 + k2[1:]**2*(k2[1:]-k2[:-1])**2 )/m \
     * np.floor(1/(indices[1:]-indices[:-1])) # <- this line = 0, if there is a discontinuity in
-    )                                        # kx or ky, due to removal of unpysical values,
+    )                                        # k1 or k2, due to removal of unpysical values,
                                              # so that S does not get increased; = 1 else
     return S, k1, k2
     
