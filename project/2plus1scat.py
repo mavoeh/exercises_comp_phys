@@ -1,3 +1,11 @@
+'''Definition of ThreeBodyScat Class etc taken from lecture script. Added:
+  - Function combined_sph_harm to calculate combined spherical harmonics
+  - Functions bilin_int1 and 
+  - Amplitude for break scattering: Function m_breakup
+  - 
+ '''
+
+
 import numpy as np
 import math as m
 from numpy.polynomial.legendre import leggauss
@@ -754,7 +762,73 @@ class ThreeBodyScatt(TwoBodyTMat):
            index allows one to store the results depending on lm using the memory more efficiently. 
         """        
         return l**2+l+m
+
+    def combined_sph_harm(self, p_array, q_array):
+      '''calculates combined spherical harmonics for given Jacobi momenta p and q 
+        
+        Input:
+        Jacobi momenta p_array and q_array
+
+      '''
+      # prepare abs value of momenta and angles 
+      self.p=np.empty((self.nqpoints+1,self.nqpoints+1,self.nx),dtype=np.double)        
+      self.q=np.empty((self.nqpoints+1,self.nqpoints+1,self.nx),dtype=np.double)        
+        
+      thetap=np.empty((self.nqpoints+1,self.nqpoints+1,self.nx),dtype=np.double)
+      phip=np.empty((self.nqpoints+1,self.nqpoints+1,self.nx),dtype=np.double)
+      thetaq=np.empty((self.nqpoints+1,self.nqpoints+1,self.nx),dtype=np.double)
+      phiq=np.empty((self.nqpoints+1,self.nqpoints+1,self.nx),dtype=np.double)
+        
+      self.p,thetap,phip=self._angle(p_array[0],p_array[1], p_array[2])
+                            
+      self.q,thetaq,phiq=self._angle(q_array[0],q_array[1],q_array[2])
+
+        # prepare spherical harmonics and store based on lmindx 
+        # number of lam,mu und l,mu combinations 
+      nlamindx=self._lmindx(self.lammax,self.lammax)+1
+      nlindx=self._lmindx(self.lmax,self.lmax)+1
+
+      # array for Y_{lam mu}(hat qp) (real is sufficient since phi=0)
+      ylam=np.empty(nlamindx,dtype=np.double)
+      for lam in range(self.lammax+1):
+        for mu in range(-lam,lam+1):
+          ylam[self._lmindx(lam,mu)]=np.real(sph_harm(mu,lam, phiq, thetaq))
+        
+      # array for Y_{l mu}(hat qp) (real is sufficient since phi=0)
+      yl=np.empty((nlindx),dtype=np.double)
+      for l in range(self.lmax+1):
+        for mu in range(-l,l+1):
+          yl[self._lmindx(l,mu)]=np.real(sph_harm(mu,l, phip, thetap))
       
+        # now prepare the necessary Clebsch-Gordan coefficients
+        # we need (l lam L, M 0 M)  and (l lam L,mu M-mu,M)
+        # I assume that L is smaller than the lmax or lammax therefore M=-L,L
+        # the smallest index for storage 
+        
+      cg=np.zeros((self.nalpha,2*self.bl+1),dtype=np.double)
+      cgp=np.zeros((self.nalpha,2*self.lmax+1,2*self.bl+1),dtype=np.double)
+        
+      for qnset in self.qnalpha:  # go through allowed l,lam combinations
+        for bm in range(-self.bl,self.bl+1):
+          cg[qnset["alpha"],bm+self.bl]=float(CG(qnset["l"],bm,qnset["lam"],0,self.bl,bm).doit())
+          for mu in range(-qnset["l"],qnset["l"]+1):
+            cgp[qnset["alpha"],mu+qnset["l"],bm+self.bl]=float(CG(qnset["l"],mu,qnset["lam"],bm-mu,self.bl,bm).doit())
+
+        # now we can perform the mu summation for the combination of coupled spherical harmonics 
+      ylylam=np.zeros((self.nalpha,2*self.bl+1),dtype=np.double)
+      for qnset in self.qnalpha:  # go through allowed l,lam combinations
+        alphap=qnset["alpha"]
+        l=qnset["l"]
+        lam=qnset["lam"]
+        for bm in range(-self.bl,self.bl+1):
+          for mu in range(-l,l+1):
+            lmindx=self._lmindx(l,mu)
+            if abs(bm-mu)<=lam:
+              lamindx=self._lmindx(lam,bm-mu)
+              ylylam[alphap,bm+self.bl]+=cgp[alphap,mu+l,bm+self.bl]*yl[lmindx]*ylam[lamindx]
+                 
+      
+      return ylylam
         
     def _prep_gfunc(self):
         """Prepares and return an array for the application of the permutation operator.
@@ -1255,3 +1329,319 @@ class ThreeBodyScatt(TwoBodyTMat):
                        /(q0**2-self.qgrid[0:self.nqpoints]**2))
         
         return m_elast        
+
+
+#From here: implement Break-up cross section and S-curve
+
+para=[700.0, 0.020167185806378923]
+pot=OBEpot(nx=24,mpi=138.0,C0=para[1],A=-1.0/6.474860194946856,cutoff=para[0])
+
+scattL0=ThreeBodyScatt(pot,e3n=5.0/ThreeBodyScatt.hbarc,nx=16,np1=20,np2=10,nq1=15,nq2=5,lmax=0,bl=0)
+
+def bilin_int1(func, xg, yg, x, y, q0):
+  '''find grid points closest to x and y, so that we can evaluate at the right grid point
+  and interpolate array if necessary'''
+
+  ix = np.abs(xg - x).argmin()
+  iy = np.abs(yg - y).argmin()
+
+  if(xg[ix] > x or ix == len(xg)-1):
+    ix -= 1
+
+  if(yg[iy] > y or iy == len(yg)-1):
+    iy -= 1
+
+  x1 = xg[ix]
+  y1 = yg[iy]
+  f11 = func[ix, iy]
+  if(ix+1 == len(xg)-1 or iy+1==len(yg)-1):
+    f12 = 0
+    f21 = 0
+    f22 = 0
+  else:
+    f12 = func[ix, iy+1]
+    f21 = func[ix+1, iy]
+    f22 = func[ix+1, iy+1]
+
+  if(ix+1 == len(xg)):
+    x2 = 0
+  else:
+    x2 = xg[ix+1]
+  if(iy+1==len(yg)):
+    y2 = q0
+  else:
+    y2 = yg[iy+1]
+
+  fxy = 1./(x2-x1)/(y2-y1)*(f11*(x2-x)*(y2-y) + f21*(x-x1)*(y2-y) + f12*(x2-x)*(y - y1) + f22*(x - x1)*(y1-y))
+
+  return fxy
+
+def bilin_int2(func, xg, yg, x, y):
+  '''find grid points closest to x and y, so that we can evaluate at the right grid point
+  and interpolate array if necessary'''
+
+  ix = np.abs(xg - x).argmin()
+  iy = np.abs(yg - y).argmin()
+
+  if(xg[ix] > x or ix == len(xg)-1):
+    ix -= 1
+
+  if(yg[iy] > y or iy == len(yg) -1):
+    iy -= 1
+
+
+  fxy = 1./(xg[ix+1]-xg[ix])/(yg[iy+1]-yg[iy])*(func[ix, iy,:]*(xg[ix+1]-x)*(yg[iy+1]-y) + func[ix+1,iy,:]*(x-xg[ix])*(yg[iy+1]-y) \
+  + func[ix, iy+1,:]*(xg[ix+1]-x)*(y - yg[iy]) + func[ix+1, iy+1,:]*(x - xg[ix])*(yg[iy]-y))
+
+  return fxy
+
+
+def m_breakup(q0, pf_ray, qf_ray):
+  '''
+  Calculate breakup scattering amplitude Mab
+        
+  Input:
+  Projectile momentun q0 = 2./3. k0
+  Jacobi momenta pf and qf of particles in the final state
+  '''
+
+  qf = np.sqrt((qf_ray**2).sum())
+  pf = np.sqrt((pf_ray**2).sum())
+
+  pgrid = scattL0.pgrid
+  qgrid = scattL0.qgrid
+
+  #interpolate T to shifted momenta
+  tsol=scattL0.tamp.reshape((scattL0.nalpha,scattL0.npoints,scattL0.nqpoints+1))
+  tampinter1=np.empty((scattL0.nalpha,scattL0.npoints+1, scattL0.nqpoints+1, scattL0.nx),dtype=np.cdouble)
+  tampinter=np.empty((scattL0.nalpha,scattL0.npoints+1, scattL0.nqpoints+1, scattL0.nx),dtype=np.cdouble)
+        
+  for alpha in range(scattL0.nalpha):
+    for jq in range(scattL0.nqpoints+1):
+      for jp in range(scattL0.npoints+1):
+        for ix in range(scattL0.nx):
+          tampinter1[alpha,jp,jq,ix]=np.sum(tsol[alpha, 0:scattL0.npoints, jq]*scattL0.splpitilde[0:scattL0.npoints, jp, jq, ix])
+        
+  for alpha in range(scattL0.nalpha):
+    for jq in range(scattL0.nqpoints+1):
+      for jp in range(scattL0.npoints+1):
+        for ix in range(scattL0.nx):
+          tampinter[alpha,jp,jq,ix]=np.sum(tampinter1[alpha, jp, 0:scattL0.nqpoints, ix]*scattL0.splchitilde[0:scattL0.nqpoints, jp, jq, ix])
+
+
+  func=np.zeros(2*scattL0.bl+1,dtype=np.cdouble)
+
+  for qnset in scattL0.qnalpha:
+    alpha=qnset["alpha"]
+    l=qnset["l"]
+    lam=qnset["lam"]
+    #first part <a|T12>
+    tsolf = bilin_int1(tsol[alpha,:,:], pgrid, qgrid, pf, qf, q0) 
+    func += scattL0.combined_sph_harm(pf_ray, qf_ray)[alpha,:]*tsolf/(q0**2 - qf**2)
+    for qnsetp in scattL0.qnalpha:  # go through allowed l,lam combinations
+      alphap=qnsetp["alpha"]
+      #second part <a|P|T12>
+      gtildef = bilin_int2(scattL0.gtilde[alpha,alphap,:,:,:], pgrid, qgrid, pf, qf)
+      tampinterf = bilin_int2(tampinter[alphap,:,:,:], pgrid, qgrid, pf, qf)
+      chitildef = bilin_int2(scattL0.chitilde[:,:,:], pgrid, qgrid, pf, qf)
+      func+=2*scattL0.combined_sph_harm(pf_ray, qf_ray)[alphap,:]*np.sum(scattL0.xw*gtildef *tampinterf/(q0**2 - chitildef**2))
+
+
+  Mab = 4.*scattL0.mass/3.*func 
+
+  return Mab
+
+
+def breakup_cross(Elab, k1, k2, theta1, theta2, phi12, m = 938.92):
+  """Calculates breakup cross-section for given momenta k_lab, k_1 and k_2
+  theta1  -   Scattering angle of particle 1 relative to z-axis.
+  theta2  -   Scattering angle of particle 2 relative to z-axis.
+  phi     -   Difference between scattering angles of
+                Particles 1 and 2 in the x-y-plane.
+  Elab    -   Energy of the incoming particle.
+  m       -   Mass of the particles.
+  
+  returns: sigma - breakup cross-section in the lab frame
+   ___________________________________________________________________
+    
+  [1] -   W. Glöckle, H. Witala, D. Hüber, H. Kamada, and J. Golak,
+          "The Three nucleon continuum: Achievements, challenges
+          and applications" Phys. Rept. 274 (1996) 107–285.
+  """
+
+  #first: calculate p  = 1/2*(k_1- k_2), q = 2/3*k_3 - 1/3*(k_1+k_2)
+
+  k_1 = k1*np.array([np.sin(theta1), 0, np.cos(theta1)])
+  k_2 = k2*np.array([np.sin(theta2)*np.cos(phi12), np.sin(theta2)*np.sin(phi12), np.cos(theta2)])
+  k0 = np.sqrt(2.*m*Elab)
+  k_lab = k0*np.array([0,0,1])
+
+  #from momentum conservation
+  k_3 = k_lab- k_1 -k_2
+
+  p = 1./2.*(k_1- k_2)
+  q = 2./3.*k_3 - 1./3.*(k_1+k_2)
+  q0 = 2./3*k0
+
+  #amplitude 
+  amp = np.absolute(m_breakup(q0, p, q))**2
+
+  k1k2 = np.sin(theta1)*np.sin(theta2)*np.cos(phi12)+ np.cos(theta2)*np.cos(theta1)
+
+  sigma = (2*np.pi)**4 * amp * m**2 * k1**2 * k2**2 * 2.*m/3./q0 / \
+  np.sqrt(k1**2*(2*k2-k0*np.cos(theta2) + k1*k1k2)**2 + k2**2*(2*k1 - k0*np.cos(theta1) + k2*k1k2)**2)
+
+  return sigma
+
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+def scurve(theta1, theta2, phi, Elab, m = 938.92, e = -2.225, N = 10**5+1, deg = False):
+    """
+    Calculates the S curve for a given set of scattering
+    angles and energy of the incoming particle
+    
+    theta1  -   Scattering angle of particle 1 relative to z-axis.
+    theta2  -   Scattering angle of particle 2 relative to z-axis.
+    phi     -   Difference between scattering angles of
+                Particles 1 and 2 in the x-y-plane.
+    Elab    -   Energy of the incoming particle.
+    m       -   Mass of the particles.
+    e       -   Binding energy of the two-body bound state.
+    N       -   Number of points for discretization of the ellipse.
+                (Note that if the ellipse is partially negative in
+                k1 or k2, due to removal of the unphysical values
+                the returned S curve contains less points.)
+    deg     -   Boolean value: if True, the input angles should be
+                given in degree, if False angles should be in radian.
+                
+    returns: S, k1, k2
+    
+    S   -   numpy.array: Arclength of the ellipse in energy space.
+            Starting point defined as in [1] (p.127 and App.B)      <-- starting point not fully implemented yet!
+    k1  -   numpy.array: Absolute value of the momentum of
+            particle 1 at the corresponding value of S.
+    k2  -   numpy.array: Absolute value of the momentum of
+            particle 2 at the corresponding value of S.
+    ___________________________________________________________________
+    
+    [1] -   W. Glöckle, H. Witala, D. Hüber, H. Kamada, and J. Golak,
+            "The Three nucleon continuum: Achievements, challenges
+             and applications" Phys. Rept. 274 (1996) 107–285.
+    """
+    # calculate momentum of incoming particle from its energy
+    k0 = np.sqrt(2*938.92*Elab)
+    
+    # transform input angles to radian if deg is True
+    if deg == True:
+        theta1 *= np.pi/180
+        theta2 *= np.pi/180
+        phi *= np.pi/180
+    
+    # check if angles between 0 and pi (theta) or 0 and 2pi (phi)
+    if (theta1<0)or(theta1>np.pi)or(theta2<0)or(theta2>np.pi)or(phi<0)or(phi>2*np.pi):
+        raise ValueError("Angles should be between 0 and pi!")
+    
+    # define theta_m and theta_p to distinguish between different cases
+    theta_m = np.arccos(np.sqrt(4*m*np.abs(e)/k0**2))
+    theta_p = -np.arccos(np.sqrt(4*m*np.abs(e)/k0**2))+np.pi
+    """
+    ###########test
+    theta1 = theta_m+0.01
+    theta2 = theta_m+0.01
+    """
+    # check if the set of input angles is mathematically allowed
+    if (theta1-np.pi/2)**2 + (theta2-np.pi/2)**2 < (theta_p-np.pi/2)**2:
+        raise ValueError("Configuration of scattering angles mathematically forbidden!")
+    
+    # check if input angles yield positive momenta
+    if ((theta1>np.pi/2 and theta2>theta_m) or (theta1>theta_m and theta2>np.pi/2)):
+        return [[]]*3
+    
+    # analytically calculate semi-axis and displacement    
+    c1, s1, c2, s2 = np.cos(theta1), np.sin(theta1), np.cos(theta2), np.sin(theta2)
+    z = np.cos(phi)*s1*s2+c1*c2
+    a = np.sqrt( (2*m*e*(4-z**2)+2*k0**2*(c1**2+c2**2-z*c1*c2)) / (z**3-2*z**2-4*z+8) )
+    b = np.sqrt( (2*m*e*(z**2-4)-2*k0**2*(c1**2+c2**2-z*c1*c2)) / (z**3+2*z**2-4*z-8) )
+    x0 = k0*(z*c2-2*c1)/(z**2-4)
+    y0 = k0*(z*c1-2*c2)/(z**2-4)
+    
+    # starting angle for parametrization at an angle of -3/4pi
+    # (ellipse is already rotated by -pi/4)
+    t0 = -np.pi/2
+    
+    # now calculate parametrization
+    t = np.linspace(t0, t0+2*np.pi, N)
+    k = np.zeros((N,2))
+    k[:,0] = 1/np.sqrt(2) * ( a*np.cos(t) + b*np.sin(t)) + x0
+    k[:,1] = 1/np.sqrt(2) * (-a*np.cos(t) + b*np.sin(t)) + y0
+    
+    # select only physically relevant values
+    mask = (k[:,0] >= 0) & (k[:,1] >= 0)
+    k1 = k[:,0][mask]
+    k2 = k[:,1][mask]
+    
+    indices = np.array(np.where(mask)[0]) # array of indices where kx and ky both positive
+    #print(len(indices)==max(indices)-min(indices)+1)
+    
+    # calculate the arclength corresponding to the point (k1,k2)
+    S = np.zeros(k1.shape)
+    S[1:] = np.cumsum( np.sqrt( k1[1:]**2*(k1[1:]-k1[:-1])**2 + k2[1:]**2*(k2[1:]-k2[:-1])**2 )/m \
+    * np.floor(1/(indices[1:]-indices[:-1])) # <- this line = 0, if there is a discontinuity in
+    )                                        # k1 or k2, due to removal of unpysical values,
+                                             # so that S does not get increased; = 1 else
+    return S, k1, k2
+    
+
+#S, kx, ky = scurve(35,0,90,1,1,-0.18,deg=True)
+
+S, kx, ky = scurve(41.9,41.9,180,22.7,deg=True)
+S = S[::1000]
+kx = kx[::1000]
+ky = ky[::1000]
+#print(S[-1])
+
+sigma = np.zeros(len(S), dtype = np.double)
+
+for i in range(len(S)):
+  sigma[i] = breakup_cross(22.7, kx[i], ky[i], 41.9,41.9,180)
+
+plt.plot(S, sigma)
+plt.show()
+
+"""
+S, kx, ky = scurve(44,44,180,65,deg=True)
+print(S[-1])
+
+S, kx, ky = scurve(20,116.2,180,65,deg=True)
+print(S[-1])
+
+
+plt.plot(kx, ky)
+plt.gca().axis('equal')
+plt.scatter(kx[0],ky[0])
+n = np.linspace(0,max(kx),len(S))
+plt.plot(n, S)
+
+plt.show()
+
+
+n = np.linspace(10, 80)
+n = np.round(1.2**n).astype(np.int)
+print(n)
+Slist = []
+for N in n:
+    print(N)
+    S, kx, ky = scurve(15,90,90,k0=1,e=1,m=1,N=N)
+    Slist.append(S[-1])
+
+plt.scatter(n, Slist)
+plt.grid(True)
+plt.title("Convergence of S-curve")
+plt.xlabel("N", fontsize=14)
+plt.ylabel("Total arclength",fontsize=14)
+plt.loglog()
+plt.show()
+"""
+
