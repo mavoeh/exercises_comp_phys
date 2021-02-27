@@ -8,7 +8,7 @@ def scurve(theta1, theta2, phi, Elab, m = 938.92, e = -2.225, N = 10**5+1, deg =
     
     theta1  -   Scattering angle of particle 1 relative to z-axis.
     theta2  -   Scattering angle of particle 2 relative to z-axis.
-    phi     -   Difference between scattering angles of.
+    phi     -   Difference between scattering angles of
                 Particles 1 and 2 in the x-y-plane.
     Elab    -   Energy of the incoming particle.
     m       -   Mass of the particles.
