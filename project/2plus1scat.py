@@ -1405,7 +1405,7 @@ def bilin_int2(func, xg, yg, x, y):
 
   return fxy
 
-def m_breakup(q0, pf_ray, qf_ray):
+def m_breakup(q0, pf_ray, qf_ray, m):
   '''
   Calculate breakup scattering amplitude Mab
         
@@ -1456,7 +1456,7 @@ def m_breakup(q0, pf_ray, qf_ray):
       func+=2*scattL0.combined_sph_harm(pf_ray, qf_ray)[alphap,:]*np.sum(scattL0.xw*gtildef *tampinterf/(q0**2 - chitildef**2))
 
 
-  Mab = 4.*scattL0.mass/3.*func 
+  Mab = 4.*m/3.*func 
 
   return Mab
 
@@ -1480,9 +1480,11 @@ def breakup_cross(Elab, k1, k2, theta1, theta2, phi12, m = 938.92):
 
   #first: calculate p  = 1/2*(k_1- k_2), q = 2/3*k_3 - 1/3*(k_1+k_2)
 
-  k_1 = k1*np.array([np.sin(theta1), 0, np.cos(theta1)])
-  k_2 = k2*np.array([np.sin(theta2)*np.cos(phi12), np.sin(theta2)*np.sin(phi12), np.cos(theta2)])
-  k0 = np.sqrt(2.*m*Elab)
+  m /= scattL0.hbarc
+
+  k_1 = k1/scattL0.hbarc*np.array([np.sin(theta1), 0, np.cos(theta1)])
+  k_2 = k2/scattL0.hbarc*np.array([np.sin(theta2)*np.cos(phi12), np.sin(theta2)*np.sin(phi12), np.cos(theta2)])
+  k0 = np.sqrt(2.*m*Elab)/scattL0.hbarc
   k_lab = k0*np.array([0,0,1])
 
   #from momentum conservation
@@ -1493,14 +1495,14 @@ def breakup_cross(Elab, k1, k2, theta1, theta2, phi12, m = 938.92):
   q0 = 2./3*k0
 
   #amplitude 
-  amp = np.absolute(m_breakup(q0, p, q))**2
+  amp = np.absolute(m_breakup(q0, p, q, m))**2
 
   k1k2 = np.sin(theta1)*np.sin(theta2)*np.cos(phi12)+ np.cos(theta2)*np.cos(theta1)
 
-  sigma = (2*np.pi)**4 * amp * m**2 * k1**2 * k2**2 * 2.*m/3./q0 / \
-  np.sqrt(k1**2*(2*k2-k0*np.cos(theta2) + k1*k1k2)**2 + k2**2*(2*k1 - k0*np.cos(theta1) + k2*k1k2)**2)
+  sigma = (2*np.pi)**4  * amp *(m)**2 * k1**2 * k2**2 * 2.*m/3./q0 / \
+  np.sqrt(k1**2*(2*k2-k0*np.cos(theta2) + k1*k1k2)**2 + k2**2*(2*k1 - k0*np.cos(theta1) + k2*k1k2)**2) 
 
-  return sigma
+  return sigma/scattL0.hbarc*10. #in mb?
 
 
 import numpy as np
