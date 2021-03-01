@@ -1342,35 +1342,35 @@ def bilin_int1(func, xg, yg, x, y, q0):
   '''find grid points closest to x and y, so that we can evaluate at the right grid point
   and interpolate array if necessary'''
 
+  #find closest grid points
   ix = np.abs(xg - x).argmin()
   iy = np.abs(yg - y).argmin()
 
   if(xg[ix] > x or ix == len(xg)-1):
     ix -= 1
-
-  if(yg[iy] > y or iy == len(yg)-1):
+  if(yg[iy] > y):
     iy -= 1
+
+  ixm = ix+1
+  iym = iy+1
+  
+  #as tampinter only has npoints grid points in p 
+  if(ixm >= len(xg)-1):
+    x2 = 0
+    ixm = np.abs(xg - 0).argmin()
+    if(ixm >= len(xg)-1):
+      print("out of bounds")
+      ixm  = 0
+  else:
+    x2 = xg[ixm]
 
   x1 = xg[ix]
   y1 = yg[iy]
+  y2 = yg[iym]
   f11 = func[ix, iy]
-  if(ix+1 == len(xg)-1 or iy+1==len(yg)-1):
-    f12 = 0
-    f21 = 0
-    f22 = 0
-  else:
-    f12 = func[ix, iy+1]
-    f21 = func[ix+1, iy]
-    f22 = func[ix+1, iy+1]
-
-  if(ix+1 == len(xg)):
-    x2 = 0
-  else:
-    x2 = xg[ix+1]
-  if(iy+1==len(yg)):
-    y2 = q0
-  else:
-    y2 = yg[iy+1]
+  f12 = func[ix, iym]
+  f21 = func[ixm, iy]
+  f22 = func[ixm, iym]
 
   fxy = 1./(x2-x1)/(y2-y1)*(f11*(x2-x)*(y2-y) + f21*(x-x1)*(y2-y) + f12*(x2-x)*(y - y1) + f22*(x - x1)*(y1-y))
 
@@ -1380,21 +1380,30 @@ def bilin_int2(func, xg, yg, x, y):
   '''find grid points closest to x and y, so that we can evaluate at the right grid point
   and interpolate array if necessary'''
 
+  #find closest grid points
   ix = np.abs(xg - x).argmin()
   iy = np.abs(yg - y).argmin()
 
   if(xg[ix] > x or ix == len(xg)-1):
     ix -= 1
-
-  if(yg[iy] > y or iy == len(yg) -1):
+  if(yg[iy] > y):
     iy -= 1
 
+  ixm = ix+1
+  iym = iy+1
+  x1 = xg[ix]
+  y1 = yg[iy]
+  x2 = xg[ixm]
+  y2 = yg[iym]
+  f11 = func[ix, iy,:]
+  f12 = func[ix, iym,:]
+  f21 = func[ixm, iy,:]
+  f22 = func[ixm, iym,:]
 
-  fxy = 1./(xg[ix+1]-xg[ix])/(yg[iy+1]-yg[iy])*(func[ix, iy,:]*(xg[ix+1]-x)*(yg[iy+1]-y) + func[ix+1,iy,:]*(x-xg[ix])*(yg[iy+1]-y) \
-  + func[ix, iy+1,:]*(xg[ix+1]-x)*(y - yg[iy]) + func[ix+1, iy+1,:]*(x - xg[ix])*(yg[iy]-y))
+  #bilinear interpolation
+  fxy = 1./(x2-x1)/(y2-y1)*(f11*(x2-x)*(y2-y) + f21*(x-x1)*(y2-y) + f12*(x2-x)*(y - y1) + f22*(x - x1)*(y1-y))
 
   return fxy
-
 
 def m_breakup(q0, pf_ray, qf_ray):
   '''
@@ -1613,20 +1622,14 @@ plt.show()
 """
 S, kx, ky = scurve(44,44,180,65,deg=True)
 print(S[-1])
-
 S, kx, ky = scurve(20,116.2,180,65,deg=True)
 print(S[-1])
-
-
 plt.plot(kx, ky)
 plt.gca().axis('equal')
 plt.scatter(kx[0],ky[0])
 n = np.linspace(0,max(kx),len(S))
 plt.plot(n, S)
-
 plt.show()
-
-
 n = np.linspace(10, 80)
 n = np.round(1.2**n).astype(np.int)
 print(n)
@@ -1635,7 +1638,6 @@ for N in n:
     print(N)
     S, kx, ky = scurve(15,90,90,k0=1,e=1,m=1,N=N)
     Slist.append(S[-1])
-
 plt.scatter(n, Slist)
 plt.grid(True)
 plt.title("Convergence of S-curve")
@@ -1644,4 +1646,3 @@ plt.ylabel("Total arclength",fontsize=14)
 plt.loglog()
 plt.show()
 """
-
