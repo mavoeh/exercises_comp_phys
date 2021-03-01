@@ -415,6 +415,7 @@ class TwoBodyTMat(TwoBody):
       # find the corresponding on-shell momentum in the 2+1 system 
       # qon should be positive (threshold is self.ed)
       qon=np.sqrt(4*self.mass/3*(E-self.ed))
+      #qon = np.sqrt(4*self.mass*E)*2./3.
       self.qgrid[self.nqpoints]=qon 
     
       print("Start calculating tmatrix for on-shell momentum q0 = {0:15.6e} fm-1".format(qon))
@@ -592,7 +593,7 @@ import time
 class ThreeBodyScatt(TwoBodyTMat):
     """Provides the implementation of the permutation operator."""
         
-    def __init__(self, pot, e3n=0.0, 
+    def __init__(self, pot, e3n, 
                             np1=20, np2=10, pa=1.0, pb=5.0, pc=20.0, 
                             nq1=20, nq2=10, qa=1.0, qb=5.0, qc=20.0, 
                             nx=12,
@@ -1331,14 +1332,19 @@ class ThreeBodyScatt(TwoBodyTMat):
         return m_elast        
 
 
-#From here: implement Break-up cross section and S-curve
+#From here: implement Break-up cross section and S-curve for given theta1, theta2, phi12, and Elab
+
+theta1 = 44.0
+theta2 = 44.0
+phi12 = 180.0
+Elab = 65.0
 
 para=[700.0, 0.020167185806378923]
 pot=OBEpot(nx=24,mpi=138.0,C0=para[1],A=-1.0/6.474860194946856,cutoff=para[0])
 
-scattL0=ThreeBodyScatt(pot,e3n=5.0/ThreeBodyScatt.hbarc,nx=16,np1=20,np2=10,nq1=15,nq2=5,lmax=0,bl=0)
+scattL0=ThreeBodyScatt(pot,e3n=Elab/ThreeBodyScatt.hbarc,nx=16,np1=20,np2=10,nq1=15,nq2=5,lmax=0,bl=0)
 
-def bilin_int1(func, xg, yg, x, y, q0):
+def bilin_int1(func, xg, yg, x, y):
   '''find grid points closest to x and y, so that we can evaluate at the right grid point
   and interpolate array if necessary'''
 
@@ -1348,22 +1354,13 @@ def bilin_int1(func, xg, yg, x, y, q0):
 
   if(xg[ix] > x or ix == len(xg)-1):
     ix -= 1
-  if(yg[iy] > y):
+  if(yg[iy] > y or iy == len(yg)-1):
     iy -= 1
 
   ixm = ix+1
   iym = iy+1
   
-  #as tampinter only has npoints grid points in p 
-  if(ixm >= len(xg)-1):
-    x2 = 0
-    ixm = np.abs(xg - 0).argmin()
-    if(ixm >= len(xg)-1):
-      print("out of bounds")
-      ixm  = 0
-  else:
-    x2 = xg[ixm]
-
+  x2 = xg[ixm]
   x1 = xg[ix]
   y1 = yg[iy]
   y2 = yg[iym]
@@ -1372,7 +1369,7 @@ def bilin_int1(func, xg, yg, x, y, q0):
   f21 = func[ixm, iy]
   f22 = func[ixm, iym]
 
-  fxy = 1./(x2-x1)/(y2-y1)*(f11*(x2-x)*(y2-y) + f21*(x-x1)*(y2-y) + f12*(x2-x)*(y - y1) + f22*(x - x1)*(y1-y))
+  fxy = 1./(x2-x1)/(y2-y1)*(f11*(x2-x)*(y2-y) + f21*(x-x1)*(y2-y) + f12*(x2-x)*(y - y1) + f22*(x - x1)*(y -y1))
 
   return fxy
 
@@ -1386,14 +1383,15 @@ def bilin_int2(func, xg, yg, x, y):
 
   if(xg[ix] > x or ix == len(xg)-1):
     ix -= 1
-  if(yg[iy] > y):
+  if(yg[iy] > y or iy == len(yg)-1):
     iy -= 1
 
   ixm = ix+1
   iym = iy+1
+
+  x2 = xg[ixm]
   x1 = xg[ix]
   y1 = yg[iy]
-  x2 = xg[ixm]
   y2 = yg[iym]
   f11 = func[ix, iy,:]
   f12 = func[ix, iym,:]
@@ -1401,7 +1399,7 @@ def bilin_int2(func, xg, yg, x, y):
   f22 = func[ixm, iym,:]
 
   #bilinear interpolation
-  fxy = 1./(x2-x1)/(y2-y1)*(f11*(x2-x)*(y2-y) + f21*(x-x1)*(y2-y) + f12*(x2-x)*(y - y1) + f22*(x - x1)*(y1-y))
+  fxy = 1./(x2-x1)/(y2-y1)*(f11*(x2-x)*(y2-y) + f21*(x-x1)*(y2-y) + f12*(x2-x)*(y - y1) + f22*(x - x1)*(y -y1))
 
   return fxy
 
@@ -1410,7 +1408,7 @@ def m_breakup(q0, pf_ray, qf_ray, m):
   Calculate breakup scattering amplitude Mab
         
   Input:
-  Projectile momentun q0 = 2./3. k0
+  Projectile momentum q0 = 2./3. k0
   Jacobi momenta pf and qf of particles in the final state
   '''
 
@@ -1445,15 +1443,18 @@ def m_breakup(q0, pf_ray, qf_ray, m):
     l=qnset["l"]
     lam=qnset["lam"]
     #first part <a|T12>
-    tsolf = bilin_int1(tsol[alpha,:,:], pgrid, qgrid, pf, qf, q0) 
+    #get tsol at pf,qf
+    tsolf = bilin_int1(tsol[alpha,:,:], pgrid, qgrid, pf, qf) 
     func += scattL0.combined_sph_harm(pf_ray, qf_ray)[alpha,:]*tsolf/(q0**2 - qf**2)
     for qnsetp in scattL0.qnalpha:  # go through allowed l,lam combinations
       alphap=qnsetp["alpha"]
       #second part <a|P|T12>
+      #find gtilde and tampinter at pf,qf
       gtildef = bilin_int2(scattL0.gtilde[alpha,alphap,:,:,:], pgrid, qgrid, pf, qf)
       tampinterf = bilin_int2(tampinter[alphap,:,:,:], pgrid, qgrid, pf, qf)
-      chitildef = bilin_int2(scattL0.chitilde[:,:,:], pgrid, qgrid, pf, qf)
-      func+=2*scattL0.combined_sph_harm(pf_ray, qf_ray)[alphap,:]*np.sum(scattL0.xw*gtildef *tampinterf/(q0**2 - chitildef**2))
+      #calculate chi(pf,qf,x)
+      chitildef = np.sqrt(pf**2 + 1./4.*qf**2 - pf*qf*scattL0.xp)
+      func+=2.*scattL0.combined_sph_harm(pf_ray, qf_ray)[alpha,:]*np.sum(scattL0.xw*gtildef*tampinterf/(q0**2 - chitildef**2))
 
 
   Mab = 4.*m/3.*func 
@@ -1499,10 +1500,12 @@ def breakup_cross(Elab, k1, k2, theta1, theta2, phi12, m = 938.92):
 
   k1k2 = np.sin(theta1)*np.sin(theta2)*np.cos(phi12)+ np.cos(theta2)*np.cos(theta1)
 
-  sigma = (2*np.pi)**4  * amp *(m)**2 * k1**2 * k2**2 * 2.*m/3./q0 / \
-  np.sqrt(k1**2*(2*k2-k0*np.cos(theta2) + k1*k1k2)**2 + k2**2*(2*k1 - k0*np.cos(theta1) + k2*k1k2)**2) 
+  kin = (2*np.pi)**4*m**2*k1**2*k2**2*2.*m/3./q0  \
+  / np.sqrt(k1**2*(2*k2-k0*np.cos(theta2) + k1*k1k2)**2 + k2**2*(2*k1 - k0*np.cos(theta1) + k2*k1k2)**2) 
 
-  return sigma/scattL0.hbarc*10. #in mb?
+  sigma = kin*amp
+
+  return sigma/scattL0.hbarc, amp/scattL0.hbarc, kin/scattL0.hbarc #in mb?
 
 
 import numpy as np
@@ -1605,46 +1608,29 @@ def scurve(theta1, theta2, phi, Elab, m = 938.92, e = -2.225, N = 10**5+1, deg =
     return S, k1, k2
     
 
-#S, kx, ky = scurve(35,0,90,1,1,-0.18,deg=True)
+### WARNING: in line 417-418, upper def of qon is from lecture (i.e probably correct)!. Check if used.
 
-S, kx, ky = scurve(41.9,41.9,180,22.7,deg=True)
+S, kx, ky = scurve(theta1, theta2, phi12, Elab,deg=True)
 S = S[::1000]
 kx = kx[::1000]
 ky = ky[::1000]
 #print(S[-1])
 
 sigma = np.zeros(len(S), dtype = np.double)
+amp = np.zeros(len(S), dtype = np.double)
+kin = np.zeros(len(S), dtype = np.double)
 
-for i in range(len(S)):
-  sigma[i] = breakup_cross(22.7, kx[i], ky[i], 41.9,41.9,180)
+
+for i in range(3,len(S)):
+  sigma[i], amp[i], kin[i] = breakup_cross(Elab, kx[i], ky[i], theta1, theta2 ,phi12)
 
 plt.plot(S, sigma)
 plt.show()
 
-"""
-S, kx, ky = scurve(44,44,180,65,deg=True)
-print(S[-1])
-S, kx, ky = scurve(20,116.2,180,65,deg=True)
-print(S[-1])
-plt.plot(kx, ky)
-plt.gca().axis('equal')
-plt.scatter(kx[0],ky[0])
-n = np.linspace(0,max(kx),len(S))
-plt.plot(n, S)
+plt.plot(S, kin)
 plt.show()
-n = np.linspace(10, 80)
-n = np.round(1.2**n).astype(np.int)
-print(n)
-Slist = []
-for N in n:
-    print(N)
-    S, kx, ky = scurve(15,90,90,k0=1,e=1,m=1,N=N)
-    Slist.append(S[-1])
-plt.scatter(n, Slist)
-plt.grid(True)
-plt.title("Convergence of S-curve")
-plt.xlabel("N", fontsize=14)
-plt.ylabel("Total arclength",fontsize=14)
-plt.loglog()
+
+plt.plot(S, amp)
 plt.show()
-"""
+
+
