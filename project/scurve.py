@@ -98,40 +98,4 @@ def scurve(theta1, theta2, phi, Elab, m = 938.92, e = -2.225, N = 10**5+1, deg =
     return S, k1, k2
     
 
-#S, kx, ky = scurve(35,0,90,1,1,-0.18,deg=True)
 
-S, kx, ky = scurve(41.9,41.9,180,22.7,deg=True)
-print(S[-1])
-
-S, kx, ky = scurve(44,44,180,65,deg=True)
-print(S[-1])
-
-S, kx, ky = scurve(20,116.2,180,65,deg=True)
-print(S[-1])
-
-plt.plot(kx, ky)
-plt.gca().axis('equal')
-plt.scatter(kx[0],ky[0])
-n = np.linspace(0,max(kx),len(S))
-plt.plot(n, S)
-
-plt.show()
-
-"""
-n = np.linspace(10, 80)
-n = np.round(1.2**n).astype(np.int)
-print(n)
-Slist = []
-for N in n:
-    print(N)
-    S, kx, ky = scurve(15,90,90,k0=1,e=1,m=1,N=N)
-    Slist.append(S[-1])
-
-plt.scatter(n, Slist)
-plt.grid(True)
-plt.title("Convergence of S-curve")
-plt.xlabel("N", fontsize=14)
-plt.ylabel("Total arclength",fontsize=14)
-plt.loglog()
-plt.show()
-"""
