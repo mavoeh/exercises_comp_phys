@@ -26,3 +26,6 @@ for i in range(0, len(S)):
 
 plt.plot(S, sigma, 'o-')
 plt.show()
+
+plt.plot(S[2:-2], sigma[2:-2])
+plt.show()
