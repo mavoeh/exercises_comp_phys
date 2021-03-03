@@ -1,12 +1,12 @@
 import numpy as np
-import matplotlib as plt
-from scurve import scurve
-from ThreeBodyScatt import *
+import matplotlib.pyplot as plt
+from ThreeBodyScattering import *
+from scurve import *
 
-theta1 = 44.0
-theta2 = 44.0
+theta1 = 41.9
+theta2 = 41.9
 phi12 = 180.0
-Elab = 65.0
+Elab = 22.7
 
 para=[700.0, 0.020167185806378923]
 pot=OBEpot(nx=24,mpi=138.0,C0=para[1],A=-1.0/6.474860194946856,cutoff=para[0])
@@ -20,17 +20,12 @@ ky = ky[::1000]
 #print(S[-1])
 
 sigma = np.zeros(len(S), dtype = np.double)
-amp = np.zeros(len(S), dtype = np.double)
-kin = np.zeros(len(S), dtype = np.double)
 
-for i in range(2, len(S)-2):
+for i in range(0, len(S)):
   sigma[i] = scattL0.breakup_cross(Elab, kx[i], ky[i], theta1, theta2 ,phi12)
 
 plt.plot(S, sigma, 'o-')
 plt.show()
 
-plt.plot(S, kin, 'o-')
-plt.show()
-
-plt.plot(S, amp, 'o-')
+plt.plot(S[2:-2], sigma[2:-2])
 plt.show()
