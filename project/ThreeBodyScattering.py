@@ -98,7 +98,7 @@ parasets=[[300.0, -0.09827953494014054],
  [1000.0, 0.030308007813785776],
  [1100.0, 0.03239034331482156],
  [1200.0, 0.03431611357447293]]
-
+                         
 
 class TwoBody:
     """Methods to obtain eigenvalues and eigenvectors for the bound state problem and for searches of the binding energy."""
@@ -415,8 +415,7 @@ class TwoBodyTMat(TwoBody):
       """  
       # find the corresponding on-shell momentum in the 2+1 system 
       # qon should be positive (threshold is self.ed)
-      #qon=np.sqrt(4*self.mass/3*(E-self.ed))
-      qon = np.sqrt(2*self.mass*(E+self.ed))*2./3.
+      qon=np.sqrt(4*self.mass/3*(E-self.ed))
       self.qgrid[self.nqpoints]=qon 
     
       print("Start calculating tmatrix for on-shell momentum q0 = {0:15.6e} fm-1".format(qon))
