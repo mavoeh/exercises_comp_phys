@@ -76,7 +76,7 @@ def scurve(theta1, theta2, phi, Elab, m = 938.92, e = -2.225, N = 10**5+1, deg =
     # (ellipse is already rotated by -pi/4)
     t0 = np.pi/4
     # except if whole ellipse is in first quadrant: start at -3pi/4
-    if (theta1 > theta_m) and (theta2 > theta_m):
+    if (theta1 >= theta_m) and (theta2 >= theta_m):
         t0 = -np.pi/2
         
     k10 = 1/np.sqrt(2) * ( a*np.cos(t0) + b*np.sin(t0)) + x0
