@@ -119,4 +119,5 @@ def scurve(theta1, theta2, phi, Elab, m = 938.92, e = -2.225, N = 10**5+1, deg =
     * np.floor(1/(d[:-1] + 1))      # <------- this line = 0, if there is a discontinuity in
     )                                        # k1 or k2, due to removal of unpysical values,
                                              # so that S does not get increased; = 1 else
+                                             
     return S, k1, k2, t

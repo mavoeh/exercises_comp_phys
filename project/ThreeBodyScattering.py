@@ -771,15 +771,7 @@ class ThreeBodyScatt(TwoBodyTMat):
         Jacobi momenta p_array and q_array
 
       '''
-      # prepare abs value of momenta and angles 
-      self.p=np.empty((self.nqpoints+1,self.nqpoints+1,self.nx),dtype=np.double)        
-      self.q=np.empty((self.nqpoints+1,self.nqpoints+1,self.nx),dtype=np.double)        
-        
-      thetap=np.empty((self.nqpoints+1,self.nqpoints+1,self.nx),dtype=np.double)
-      phip=np.empty((self.nqpoints+1,self.nqpoints+1,self.nx),dtype=np.double)
-      thetaq=np.empty((self.nqpoints+1,self.nqpoints+1,self.nx),dtype=np.double)
-      phiq=np.empty((self.nqpoints+1,self.nqpoints+1,self.nx),dtype=np.double)
-        
+      # prepare abs value of momenta and angles   
       self.p,thetap,phip=self._angle(p_array[0],p_array[1], p_array[2])
                             
       self.q,thetaq,phiq=self._angle(q_array[0],q_array[1],q_array[2])
@@ -789,17 +781,17 @@ class ThreeBodyScatt(TwoBodyTMat):
       nlamindx=self._lmindx(self.lammax,self.lammax)+1
       nlindx=self._lmindx(self.lmax,self.lmax)+1
 
-      # array for Y_{lam mu}(hat qp) (real is sufficient since phi=0)
-      ylam=np.empty(nlamindx,dtype=np.double)
+      # array for Y_{lam mu}(hat qp) 
+      ylam=np.empty(nlamindx,dtype=np.cdouble)
       for lam in range(self.lammax+1):
         for mu in range(-lam,lam+1):
-          ylam[self._lmindx(lam,mu)]=np.real(sph_harm(mu,lam, phiq, thetaq))
+          ylam[self._lmindx(lam,mu)]=sph_harm(mu,lam, phiq, thetaq) #np.real?
         
       # array for Y_{l mu}(hat qp) (real is sufficient since phi=0)
-      yl=np.empty((nlindx),dtype=np.double)
+      yl=np.empty((nlindx),dtype=np.cdouble)
       for l in range(self.lmax+1):
         for mu in range(-l,l+1):
-          yl[self._lmindx(l,mu)]=np.real(sph_harm(mu,l, phip, thetap))
+          yl[self._lmindx(l,mu)]=sph_harm(mu,l, phip, thetap) #np.real?
       
         # now prepare the necessary Clebsch-Gordan coefficients
         # we need (l lam L, M 0 M)  and (l lam L,mu M-mu,M)
@@ -816,7 +808,7 @@ class ThreeBodyScatt(TwoBodyTMat):
             cgp[qnset["alpha"],mu+qnset["l"],bm+self.bl]=float(CG(qnset["l"],mu,qnset["lam"],bm-mu,self.bl,bm).doit())
 
         # now we can perform the mu summation for the combination of coupled spherical harmonics 
-      ylylam=np.zeros((self.nalpha,2*self.bl+1),dtype=np.double)
+      ylylam=np.zeros((self.nalpha,2*self.bl+1),dtype=np.cdouble)
       for qnset in self.qnalpha:  # go through allowed l,lam combinations
         alphap=qnset["alpha"]
         l=qnset["l"]
@@ -1334,7 +1326,8 @@ class ThreeBodyScatt(TwoBodyTMat):
 
     def interpol1(self, func, xg, yg, x, y):
       '''find grid points closest to x and y, so that we can evaluate at the right grid point
-      and interpolate array if necessary'''
+      and interpolate array if necessary
+      form: func = (nqpoints+1, npoints)'''
 
       #find index closest to x and y
       ix = np.abs(xg - x).argmin()
@@ -1352,7 +1345,7 @@ class ThreeBodyScatt(TwoBodyTMat):
       int2 = np.empty((len(xg), len(yg)), dtype = np.cdouble)
       for i in range(len(xg)):
         for j in range(len(yg)):
-          int1[i,j] = np.sum(func[0:len(xg), j]*xspl[0:len(xg)-1, i])
+          int1[i,j] = np.sum(func[j, 0:len(xg)]*xspl[0:len(xg)-1, i])
 
       for i in range(len(xg)):
         for j in range(len(yg)):
@@ -1366,7 +1359,8 @@ class ThreeBodyScatt(TwoBodyTMat):
 
     def interpol2(self, func, xg, yg, x, y, third):
       '''find grid points closest to x and y, so that we can evaluate at the right grid point
-      and interpolate array if necessary'''
+      and interpolate array if necessary
+      form: func = (npoints+1, nqpoints+1, xp)'''
 
       #find index closest to x and y
       ix = np.abs(xg - x).argmin()
@@ -1415,7 +1409,7 @@ class ThreeBodyScatt(TwoBodyTMat):
       qgrid = self.qgrid
 
       #interpolate T to shifted momenta
-      tsol=self.tamp.reshape((self.nalpha,self.npoints,self.nqpoints+1))
+      tsol=self.tamp.reshape((self.nalpha,self.nqpoints+1,self.npoints))
       tampinter1=np.empty((self.nalpha,self.npoints+1, self.nqpoints+1, self.nx),dtype=np.cdouble)
       tampinter=np.empty((self.nalpha,self.npoints+1, self.nqpoints+1, self.nx),dtype=np.cdouble)
             
@@ -1423,7 +1417,7 @@ class ThreeBodyScatt(TwoBodyTMat):
         for jq in range(self.nqpoints+1):
           for jp in range(self.npoints+1):
             for ix in range(self.nx):
-              tampinter1[alpha,jp,jq,ix]=np.sum(tsol[alpha, 0:self.npoints, jq]*self.splpitilde[0:self.npoints, jp, jq, ix])
+              tampinter1[alpha,jp,jq,ix]=np.sum(tsol[alpha, jq, 0:self.npoints]*self.splpitilde[0:self.npoints, jp, jq, ix])
             
       for alpha in range(self.nalpha):
         for jq in range(self.nqpoints+1):
@@ -1458,7 +1452,7 @@ class ThreeBodyScatt(TwoBodyTMat):
       return Mab
 
 
-    def breakup_cross(self, Elab, k1, k2, theta1, theta2, phi12, m = 938.92):
+    def breakup_cross(self, Elab, k1, k2, theta1, theta2, phi12, m = 938.92, deg = True):
       """Calculates breakup cross-section for given momenta k_lab, k_1 and k_2
       theta1  -   Scattering angle of particle 1 relative to z-axis.
       theta2  -   Scattering angle of particle 2 relative to z-axis.
@@ -1474,6 +1468,10 @@ class ThreeBodyScatt(TwoBodyTMat):
               "The Three nucleon continuum: Achievements, challenges
               and applications" Phys. Rept. 274 (1996) 107–285.
       """
+      if deg == True:
+        theta1 *= np.pi/180.
+        theta2 *= np.pi/180.
+        phi12 *= np.pi/180.
 
       #first: calculate p  = 1/2*(k_1- k_2), q = 2/3*k_3 - 1/3*(k_1+k_2)
 

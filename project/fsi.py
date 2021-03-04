@@ -2,12 +2,11 @@ import numpy as np
 from scurve import scurve
 import matplotlib.pyplot as plt
 
-def fsi(threeBodySolver, theta, Elab,
-        e = -2.225,
+def fsi(threeBodySolver, theta, Elab, e,
         m = 938.92,
         N_scurve = 10**5+1,
-        Nc = 10,
-        deg = False):
+        Nc = 100,
+        deg = True):
     
     # get S curve for given parameters
     S, k1, k2, t = scurve(theta, theta, 0, Elab, m = m, e = e, N = N_scurve, deg = deg)
@@ -20,11 +19,11 @@ def fsi(threeBodySolver, theta, Elab,
         i = np.argmin( np.abs(t%(2*np.pi) - ti) )
         if np.abs(t[i]%(2*np.pi) - ti) <= np.pi/N_scurve:
             fsi_peakpos.append(S[i])
-            plt.scatter(k1[i],k2[i])
+            #plt.scatter(k1[i],k2[i])
     
-    plt.plot(k1, k2)
-    plt.scatter(k1[0], k2[0])
-    print(fsi_peakpos)
+    #plt.plot(k1, k2)
+    #plt.scatter(k1[0], k2[0])
+    #print(fsi_peakpos)
     
     # now plot the cross section (but on a coarser grid)
     Ns = len(S)
@@ -32,12 +31,8 @@ def fsi(threeBodySolver, theta, Elab,
     k1 = k1[::int(np.round(Ns/Nc))]
     k2 = k2[::int(np.round(Ns/Nc))]
     sig = np.zeros(Nc) # array for the cross section
-    #for i in range(Nc):
-        #sig[i] = threeBodySolver.breakup_cross(Elab, k1[i], k2[i], theta, theta, 0)
+    for i in range(Nc):
+        sig[i] = threeBodySolver.breakup_cross(Elab, k1[i], k2[i], theta, theta, 0)
     
     
-
-print(fsi(None, 44, 65, deg = True))
-plt.gca().axis('equal')
-plt.show()
-    
+    return S, sig, fsi_peakpos    
