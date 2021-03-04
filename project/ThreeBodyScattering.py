@@ -1411,6 +1411,7 @@ class ThreeBodyScatt(TwoBodyTMat):
       #interpolate T to shifted momenta
       tsol=self.tamp.reshape((self.nalpha,self.nqpoints+1,self.npoints))
       tsol1=np.empty((self.nalpha,self.npoints, self.nqpoints+1),dtype=np.cdouble)
+      tampinter1=np.empty((self.nalpha,self.npoints+1, self.nqpoints+1, self.nqpoints+1, self.nx),dtype=np.cdouble)
       tampinter=np.empty((self.nalpha,self.npoints+1, self.nqpoints+1, self.nx),dtype=np.cdouble)
       
       for alpha in range(self.nalpha):
@@ -1419,18 +1420,17 @@ class ThreeBodyScatt(TwoBodyTMat):
               tsol1[alpha, jp, jq] = tsol[alpha, jq, jp]
 
       for alpha in range(self.nalpha):
-        for jq in range(self.nqpoints+1):
           for jp in range(self.npoints+1):
-            for ix in range(self.nx):
-              tampinter[alpha,jp,jq,ix]=np.sum(self.splchitilde[0:self.nqpoints, jp, jq, ix] \
-              * np.sum(tsol1[alpha, 0:self.npoints, 0:self.nqpoints]*self.splpitilde[0:self.npoints, jp, 0:self.nqpoints, ix], axis=0))
-      '''     
+            for jq in range(self.nqpoints+1):
+              for iq in range(self.nqpoints+1):
+                for ix in range(self.nx):
+                  tampinter1[alpha,jp,jq,iq,ix]=np.sum(tsol1[alpha, 0:self.npoints, iq]*self.splpitilde[0:self.npoints, jp, jq, ix])
+
       for alpha in range(self.nalpha):
-        for jq in range(self.nqpoints+1):
-          for jp in range(self.npoints+1):
-            for ix in range(self.nx):
-              tampinter[alpha,jp,jq,ix]=np.sum(tampinter1[alpha, jp, 0:self.nqpoints, ix]*self.splchitilde[0:self.nqpoints, jp, jq, ix])
-      '''
+        for jp in range(self.npoints+1):
+          for jq in range(self.nqpoints+1):
+              tampinter[alpha,jp,jq,:]=np.sum(tampinter1[alpha, jp, jq, 0:self.nqpoints, :]*self.splchitilde[0:self.nqpoints, jp, jq, :])
+    
 
       func=np.zeros(2*self.bl+1,dtype=np.cdouble)
 
