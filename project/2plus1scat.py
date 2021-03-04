@@ -33,7 +33,7 @@ sigma = np.zeros(len(S))
 for i in range(len(S)):
   sigma[i] = scattL0.breakup_cross(Elab, kx[i], ky[i], theta1, theta2 ,phi12)
 
-plt.plot(S, sigma, 'o-')
+plt.plot(S[:-2], sigma[:-2], 'o-')
 plt.show()
 
 theta = 45.0
