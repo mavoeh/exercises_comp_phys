@@ -1419,6 +1419,20 @@ class ThreeBodyScatt(TwoBodyTMat):
           for jp in range(self.npoints):
               tsol1[alpha, jp, jq] = tsol[alpha, jq, jp]
 
+
+       #combinde pi and chi into one array
+      pichi = np.empty((self.npoints, self.nqpoints, self.npoints+1, self.nqpoints+1, self.nx), dtype=np.cdouble)
+      for jq in range(self.nqpoints):
+        for jp in range(self.npoints):
+          pichi[jp, jq, :, :, :] = self.splpitilde[jp, :, :, :]*self.splchitilde[jq, :, :, :]
+
+      for alpha in range(self.nalpha):
+          for jp in range(self.npoints+1):
+            for jq in range(self.nqpoints+1):
+                for ix in range(self.nx):
+                  tampinter[alpha,jp,jq,ix]=np.sum(np.sum(tsol1[alpha, 0:self.npoints, 0:self.nqpoints]*pichi[:, :, jp, jq, ix], axis = 0))
+
+      '''
       for alpha in range(self.nalpha):
           for jp in range(self.npoints+1):
             for jq in range(self.nqpoints+1):
@@ -1430,7 +1444,7 @@ class ThreeBodyScatt(TwoBodyTMat):
         for jp in range(self.npoints+1):
           for jq in range(self.nqpoints+1):
               tampinter[alpha,jp,jq,:]=np.sum(tampinter1[alpha, jp, jq, 0:self.nqpoints, :]*self.splchitilde[0:self.nqpoints, jp, jq, :])
-    
+      '''
 
       func=np.zeros(2*self.bl+1,dtype=np.cdouble)
 
