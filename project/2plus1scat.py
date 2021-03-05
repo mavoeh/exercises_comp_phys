@@ -13,10 +13,10 @@ ed, _, _, _ = TwoBody(pot, np1=20, np2=10).esearch()
 
 theta1 = 41.9
 theta2 = 41.9
-phi12 = 180.0
+phi12 = 180.
 Elab = 22.7
 
-scattL0 = ThreeBodyScatt(pot,e3n=(2./3.*Elab/ThreeBodyScatt.hbarc + ed),nx=16,np1=20,np2=10,nq1=15,nq2=5,lmax=2,bl=1)
+scattL0 = ThreeBodyScatt(pot,e3n=(2./3.*Elab/ThreeBodyScatt.hbarc + ed),nx=16,np1=20,np2=10,nq1=15,nq2=5,lmax=0,bl=0)
 ed *= scattL0.hbarc
 
 
@@ -35,7 +35,7 @@ for i in range(len(S)):
 	sigma[i] = scattL0.breakup_cross(Elab, kx[i], ky[i], theta1, theta2 ,phi12)
 
 
-plt.plot(S[:-3], sigma[:-3], 'o-')
+plt.plot(S[:-4], sigma[:-4], 'o-')
 plt.show()
 
 

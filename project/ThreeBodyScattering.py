@@ -1,6 +1,7 @@
 '''Definition of ThreeBodyScat Class etc taken from lecture script. Added:
   - Function combined_sph_harm to calculate combined spherical harmonics
-  - Functions interpol1  and interpol2 
+  - Function gtilde_final (like _prep_gtilde) to get gtilde at pf,qf
+  - Function interpol
   - Amplitude for break scattering: Function m_breakup
   - Break-up cross section
  '''
@@ -1314,73 +1315,128 @@ class ThreeBodyScatt(TwoBodyTMat):
         return m_elast 
 
 
-    def interpol1(self, func, xg, yg, x, y):
+
+    def gtilde_final(self, pf, qf):
+        """Prepares and return an array for the application of the permutation operator 
+           for the generation of the wave function and the second term in scattering.
+        
+           The routine stores 
+           - self.gtilde[alpha,alphap,x]  (\tilde G_{alpha,alphap}(pf,qf,x))
+           - self.pitilde[x]
+           - self.chitilde[x]
+          
+        """
+        
+        # prepare shifted momenta and angles for the symmetric permutation 
+        pitildef=np.empty(self.nx,dtype=np.double)        
+        chitildef=np.empty(self.nx,dtype=np.double)        
+        
+        thetapi=np.empty(self.nx,dtype=np.double)
+        thetachi=np.empty(self.nx,dtype=np.double)
+        thetapp=np.empty((self.nx),dtype=np.double)
+        
+        qval = qf
+        pval = pf
+        for ix in range(self.nx):
+          xval=self.xp[ix] 
+          thetapp[ix]=np.arccos(xval)
+            
+          px=-0.75*qval*np.sqrt(1.0-xval**2)
+          py=0.0
+          pz=-0.5*pval-0.75*qval*xval 
+          pitildef[ix],thetapi[ix],phi=self._angle(px,py,pz)
+                
+          px=-0.5*qval*np.sqrt(1.0-xval**2)
+          py=0.0
+          pz=pval-0.5*qval*xval 
+          chitildef[ix],thetachi[ix],phi=self._angle(px,py,pz)
+
+        # prepare spherical harmonics and store based on lmindx 
+        # number of lam,mu und l,mu combinations 
+        nlamindx=self._lmindx(self.lammax,self.lammax)+1
+        nlindx=self._lmindx(self.lmax,self.lmax)+1
+        
+        # array for Y_{lam mu}(hat qp) (real is sufficient since phi=0)
+        ystarlam=np.empty((nlamindx,self.nx),dtype=np.double)
+        for lam in range(self.lammax+1):
+          for mu in range(-lam,lam+1):
+            ystarlam[self._lmindx(lam,mu),:]=np.real(sph_harm(mu,lam, 0, thetapp))
+        
+        
+        # array for Y_{l mu}(-0.5p-0.75q) (real is sufficient since phi=0)
+        yl=np.empty((nlindx, self.nx),dtype=np.double)
+        for l in range(self.lmax+1):
+          for mu in range(-l,l+1):
+            yl[self._lmindx(l,mu),:]=np.real(sph_harm(mu,l, 0, thetapi))
+        
+        # array for Y_{lam mu}(p-0.5q) (real is sufficient since phi=0)
+        ylam=np.empty((nlamindx,self.nx),dtype=np.double)
+        for lam in range(self.lammax+1):
+          for mu in range(-lam,lam+1):
+            ylam[self._lmindx(lam,mu),:]=np.real(sph_harm(mu,lam, 0, thetachi))
+        
+        # now prepare the necessary Clebsch-Gordan coefficients
+        # we need (l lam L,0 M M)  and (l lam L,mu M-mu,M) for M=0!!!
+        # I assume that L is smaller than the lmax or lammax therefore M=-L,L
+        # the smallest index for storage 
+        
+        cg=np.zeros((self.nalpha),dtype=np.double)
+        cgp=np.zeros((self.nalpha,2*self.lmax+1),dtype=np.double)
+        
+        for qnset in self.qnalpha:  # go through allowed l,lam combinations
+          cg[qnset["alpha"]]=float(CG(qnset["l"],0,qnset["lam"],0,self.bl,0).doit())
+          for mu in range(-qnset["l"],qnset["l"]+1):
+            cgp[qnset["alpha"],mu+qnset["l"]]=float(CG(qnset["l"],mu,qnset["lam"],-mu,self.bl,0).doit())
+
+        # now we can perform the mu summation for the combination of coupled spherical harmonics 
+        ylylam=np.zeros((self.nalpha, self.nx),dtype=np.double)
+        for qnset in self.qnalpha:  # go through allowed l,lam combinations
+          alphap=qnset["alpha"]
+          l=qnset["l"]
+          lam=qnset["lam"]
+          for mu in range(-l,l+1):
+            lmindx=self._lmindx(l,mu)
+            if abs(-mu)<=lam:
+              lamindx=self._lmindx(lam,-mu)
+              ylylam[alphap,:]+=cgp[alphap,mu+l]*yl[lmindx,:]*ylam[lamindx,:]
+                
+        # bm summation then gives G but M=0!
+        gtildef=np.zeros((self.nalpha,self.nalpha,self.nx),dtype=np.double)
+        for qnset in self.qnalpha:  # go through allowed l,lam combinations
+          alpha=qnset["alpha"]
+          l=qnset["l"]
+          lam=qnset["lam"]
+          for qnsetp in self.qnalpha:  # go through allowed l,lam combinations
+            alphap=qnsetp["alpha"] 
+            lamindx=self._lmindx(lam,0) 
+            gtildef[alpha,alphap,:]+=8*m.pi**2*np.sqrt((2*l+1)/(4*m.pi))/(2*self.bl+1) \
+            *ystarlam[lamindx,:]*ylylam[alphap,:] \
+            *cg[alpha]
+
+        return gtildef, pitildef, chitildef
+
+    def interpol(self, func, xg, yg, x, y):
       '''find grid points closest to x and y, so that we can evaluate at the right grid point
       and interpolate array if necessary
-      form: func = (nqpoints+1, npoints)'''
+      form: func = (alpha, npoints, nqpoints+1) use for tsol1'''
 
-      #find index closest to x and y
-      ix = np.abs(xg - x).argmin()
-      iy = np.abs(yg - y).argmin()
-
-      #define new grid 
-      xgnew = xg + (xg[ix]-x)
-      ygnew = yg +(yg[iy] -y)
+      x = np.array([x])
+      y = np.array([y])
 
       #interpolate function
-      xspl = Cubherm.spl(xg, xgnew)
-      yspl = Cubherm.spl(yg, ygnew)
+      xspl = Cubherm.spl(xg[0:self.npoints], x)
+      yspl = Cubherm.spl(yg, y)
 
-      int1 = np.empty((len(xg), len(yg)), dtype = np.cdouble)
-      int2 = np.empty((len(xg), len(yg)), dtype = np.cdouble)
-      for i in range(len(xg)):
+      int1 = np.empty((self.nalpha, len(yg)), dtype = np.cdouble)
+      int2 = np.empty((self.nalpha), dtype = np.cdouble)
+      for alpha in range(self.nalpha):
         for j in range(len(yg)):
-          int1[i,j] = np.sum(func[j, 0:len(xg)]*xspl[0:len(xg)-1, i])
+          int1[alpha, j] = np.sum(func[alpha,0:len(xg)-1, j]*xspl[0:len(xg)-1, 0], axis = 0)
 
-      for i in range(len(xg)):
-        for j in range(len(yg)):
-          int2[i,j] = np.sum(int1[i, 0:len(yg)]*yspl[0:len(yg), j])
+      for alpha in range(self.nalpha):
+        int2[alpha] = np.sum(int1[alpha, 0:len(yg)]*yspl[0:len(yg), 0], axis = 0) 
 
-      #find again right index
-      ix = np.abs(xspl[0,:] - x).argmin()
-      iy = np.abs(yspl[0,:] - y).argmin()  
-
-      return int2[ix, iy]
-
-    def interpol2(self, func, xg, yg, x, y, third):
-      '''find grid points closest to x and y, so that we can evaluate at the right grid point
-      and interpolate array if necessary
-      form: func = (npoints+1, nqpoints+1, xp)'''
-
-      #find index closest to x and y
-      ix = np.abs(xg - x).argmin()
-      iy = np.abs(yg - y).argmin()
-
-      #define new grid 
-      xgnew = xg + (xg[ix]-x)
-      ygnew = yg +(yg[iy] -y)
-
-      #interpolate function
-      xspl = Cubherm.spl(xg, xgnew)
-      yspl = Cubherm.spl(yg, ygnew)
-
-      int1 = np.empty((len(xg), len(yg), len(third)), dtype = np.cdouble)
-      int2 = np.empty((len(xg), len(yg), len(third)), dtype = np.cdouble)
-      for i in range(len(xg)):
-        for j in range(len(yg)):
-          for x in range(len(third)):
-            int1[i,j,x] = np.sum(func[0:len(xg), j, x]*xspl[0:len(xg), i])
-
-      for i in range(len(xg)):
-        for j in range(len(yg)):
-          for x in range(len(third)):
-            int2[i,j,x] = np.sum(int1[i, 0:len(yg), x]*yspl[0:len(yg), j])
-
-      #find again right index
-      ix = np.abs(xspl[0,:] - x).argmin()
-      iy = np.abs(yspl[0,:] - y).argmin()  
-
-      return int2[ix, iy,:]
+      return int2
 
 
     def m_breakup(self, q0, pf_ray, qf_ray, m):
@@ -1390,10 +1446,11 @@ class ThreeBodyScatt(TwoBodyTMat):
       Input:
       Projectile momentum q0 = 2./3. k0
       Jacobi momenta pf and qf of particles in the final state
+      Mass m of the particles
       '''
 
-      qf = np.sqrt((qf_ray**2).sum())
-      pf = np.sqrt((pf_ray**2).sum())
+      qf = np.sqrt(np.sum(qf_ray**2))
+      pf = np.sqrt(np.sum(pf_ray**2))
 
       pgrid = self.pgrid
       qgrid = self.qgrid
@@ -1401,40 +1458,30 @@ class ThreeBodyScatt(TwoBodyTMat):
       #interpolate T to shifted momenta
       tsol=self.tamp.reshape((self.nalpha,self.nqpoints+1,self.npoints))
       tsol1=np.empty((self.nalpha,self.npoints, self.nqpoints+1),dtype=np.cdouble)
-      tampinter1=np.empty((self.nalpha,self.npoints+1, self.nqpoints+1, self.nqpoints+1, self.nx),dtype=np.cdouble)
-      tampinter=np.empty((self.nalpha,self.npoints+1, self.nqpoints+1, self.nx),dtype=np.cdouble)
+      tampinter1=np.empty((self.nalpha, self.nqpoints+1, self.nx),dtype=np.cdouble)
+      tampinter=np.empty((self.nalpha, self.nx),dtype=np.cdouble)
       
       for alpha in range(self.nalpha):
         for jq in range(self.nqpoints+1):
           for jp in range(self.npoints):
               tsol1[alpha, jp, jq] = tsol[alpha, jq, jp]
 
+      #get tsol1, gtilde and pi, chi at pf,qf
+      tsolf = self.interpol(tsol1, pgrid, qgrid, pf, qf)       
+      gf, pi, chi = self.gtilde_final(pf,qf)
 
-      #combinde pi and chi into one array
-      pichi = np.empty((self.npoints, self.nqpoints, self.npoints+1, self.nqpoints+1, self.nx), dtype=np.cdouble)
-      for jq in range(self.nqpoints):
-        for jp in range(self.npoints):
-          pichi[jp, jq, :, :, :] = self.splpitilde[jp, :, :, :]*self.splchitilde[jq, :, :, :]
-
-      for alpha in range(self.nalpha):
-          for jp in range(self.npoints+1):
-            for jq in range(self.nqpoints+1):
-                for ix in range(self.nx):
-                  tampinter[alpha,jp,jq,ix]=np.sum(np.sum(tsol1[alpha, 0:self.npoints, 0:self.nqpoints]*pichi[:, :, jp, jq, ix], axis = 0))
-
-      '''
-      for alpha in range(self.nalpha):
-          for jp in range(self.npoints+1):
-            for jq in range(self.nqpoints+1):
-              for iq in range(self.nqpoints+1):
-                for ix in range(self.nx):
-                  tampinter1[alpha,jp,jq,iq,ix]=np.sum(tsol1[alpha, 0:self.npoints, iq]*self.splpitilde[0:self.npoints, jp, jq, ix])
+      #interpolate tamp to pi(pfqfx) and chi(pfqfx) 
+      pispl = Cubherm.spl(pgrid[0:self.npoints], pi)
+      chispl  = Cubherm.spl(qgrid, chi)
 
       for alpha in range(self.nalpha):
-        for jp in range(self.npoints+1):
-          for jq in range(self.nqpoints+1):
-              tampinter[alpha,jp,jq,:]=np.sum(tampinter1[alpha, jp, jq, 0:self.nqpoints, :]*self.splchitilde[0:self.nqpoints, jp, jq, :])
-      '''
+        for ix in range(self.nx):
+          for iq in range(self.nqpoints+1):
+            tampinter1[alpha, iq, ix] = np.sum(tsol1[alpha, 0:self.npoints, iq]*pispl[0:self.npoints, ix])
+
+      for alpha in range(self.nalpha):
+        for ix in range(self.nx):
+          tampinter[alpha, ix] = np.sum(tampinter1[alpha, 0:self.nqpoints, ix]*chispl[0:self.nqpoints, ix])      
 
       func=0
 
@@ -1443,19 +1490,11 @@ class ThreeBodyScatt(TwoBodyTMat):
         l=qnset["l"]
         lam=qnset["lam"]
         #first part <a|T12>
-        #get tsol at pf,qf
-        tsolf = self.interpol1(tsol[alpha,:,:], pgrid, qgrid, pf, qf) 
-        func += self.combined_sph_harm(pf_ray, qf_ray)[alpha]*tsolf/(q0**2 - qf**2)
+        func += self.combined_sph_harm(pf_ray, qf_ray)[alpha]*tsolf[alpha]/(q0**2 - qf**2) 
         for qnsetp in self.qnalpha:  # go through allowed l,lam combinations
           alphap=qnsetp["alpha"]
           #second part <a|P|T12>
-          #find gtilde and tampinter at pf,qf
-          gtildef = self.interpol2(self.gtilde[alpha,alphap,:,:,:], pgrid, qgrid, pf, qf, self.xp)
-          tampinterf = self.interpol2(tampinter[alphap,:,:,:], pgrid, qgrid, pf, qf, self.xp)
-          #calculate chi(pf,qf,x)
-          chitildef = np.sqrt(pf**2 + 1./4.*qf**2 - pf*qf*self.xp)
-          func+=2.*self.combined_sph_harm(pf_ray, qf_ray)[alpha]*np.sum(self.xw*gtildef*tampinterf/(q0**2 - chitildef**2))
-
+          func+=2.*self.combined_sph_harm(pf_ray, qf_ray)[alpha]*np.sum(self.xw*tampinter[alphap]*gf[alpha, alphap,:]/(q0**2 - chi**2)) 
 
       Mab = 4.*m/3.*func
 
@@ -1487,7 +1526,7 @@ class ThreeBodyScatt(TwoBodyTMat):
 
       m /= self.hbarc
 
-      k_1 = k1/self.hbarc*np.array([np.sin(theta1), 0, np.cos(theta1)])
+      k_1 = k1/self.hbarc*np.array([np.sin(theta1), 0., np.cos(theta1)])
       k_2 = k2/self.hbarc*np.array([np.sin(theta2)*np.cos(phi12), np.sin(theta2)*np.sin(phi12), np.cos(theta2)])
       k0 = np.sqrt(2.*m*Elab)/self.hbarc
       k_lab = k0*np.array([0,0,1])
@@ -1497,7 +1536,7 @@ class ThreeBodyScatt(TwoBodyTMat):
 
       p = 1./2.*(k_1- k_2)
       q = 2./3.*k_3 - 1./3.*(k_1+k_2)
-      q0 = 2./3*k0
+      q0 = 2./3.*k0
 
       #amplitude 
       amp = np.absolute(self.m_breakup(q0, p, q, m))**2
