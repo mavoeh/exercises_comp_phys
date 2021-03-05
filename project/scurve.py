@@ -1,6 +1,6 @@
 import numpy as np
 
-def scurve(theta1, theta2, phi, Elab, m = 938.92, e = -2.225, N = 10**5+1, deg = False):
+def scurve(theta1, theta2, phi, Elab, e, m = 938.92, N = 10**5+1, deg = True):
     """
     Calculates the S curve for a given set of scattering
     angles and energy of the incoming particle
@@ -114,10 +114,18 @@ def scurve(theta1, theta2, phi, Elab, m = 938.92, e = -2.225, N = 10**5+1, deg =
         d  = np.roll(d,  -i0)
     
     # calculate the arclength corresponding to the point (k1,k2)
+    #in energyspace
     S = np.zeros(k1.shape)
     S[1:] = np.cumsum( np.sqrt( k1[1:]**2*(k1[1:]-k1[:-1])**2 + k2[1:]**2*(k2[1:]-k2[:-1])**2 )/m \
     * np.floor(1/(d[:-1] + 1))      # <------- this line = 0, if there is a discontinuity in
     )                                        # k1 or k2, due to removal of unpysical values,
                                              # so that S does not get increased; = 1 else
-                                             
-    return S, k1, k2, t
+
+    #in momentum-space                                         
+    Sk = np.zeros(k1.shape)
+    Sk[1:] = np.cumsum( np.sqrt((k1[1:]-k1[:-1])**2 + (k2[1:]-k2[:-1])**2 ) \
+    * np.floor(1/(d[:-1] + 1))      # <------- this line = 0, if there is a discontinuity in
+    )                                        # k1 or k2, due to removal of unpysical values,
+                                             # so that S does not get increased; = 1 else
+
+    return S, Sk, k1, k2, t

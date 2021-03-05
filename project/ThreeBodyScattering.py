@@ -785,40 +785,38 @@ class ThreeBodyScatt(TwoBodyTMat):
       ylam=np.empty(nlamindx,dtype=np.cdouble)
       for lam in range(self.lammax+1):
         for mu in range(-lam,lam+1):
-          ylam[self._lmindx(lam,mu)]=sph_harm(mu,lam, phiq, thetaq) #np.real?
+          ylam[self._lmindx(lam,mu)]=sph_harm(mu,lam, phiq, thetaq) 
         
       # array for Y_{l mu}(hat qp) (real is sufficient since phi=0)
       yl=np.empty((nlindx),dtype=np.cdouble)
       for l in range(self.lmax+1):
         for mu in range(-l,l+1):
-          yl[self._lmindx(l,mu)]=sph_harm(mu,l, phip, thetap) #np.real?
+          yl[self._lmindx(l,mu)]=sph_harm(mu,l, phip, thetap) 
       
-        # now prepare the necessary Clebsch-Gordan coefficients
-        # we need (l lam L, M 0 M)  and (l lam L,mu M-mu,M)
+        # now prepare the necessary Clebsch-Gordan coefficients M=0 always
+        # we need (l lam L, 0 0 0)  and (l lam L,mu,-mu,0)
         # I assume that L is smaller than the lmax or lammax therefore M=-L,L
         # the smallest index for storage 
         
-      cg=np.zeros((self.nalpha,2*self.bl+1),dtype=np.double)
-      cgp=np.zeros((self.nalpha,2*self.lmax+1,2*self.bl+1),dtype=np.double)
+      #cg=np.zeros((self.nalpha,),dtype=np.double)
+      cgp=np.zeros((self.nalpha,2*self.lmax+1),dtype=np.double)
         
       for qnset in self.qnalpha:  # go through allowed l,lam combinations
-        for bm in range(-self.bl,self.bl+1):
-          cg[qnset["alpha"],bm+self.bl]=float(CG(qnset["l"],bm,qnset["lam"],0,self.bl,bm).doit())
-          for mu in range(-qnset["l"],qnset["l"]+1):
-            cgp[qnset["alpha"],mu+qnset["l"],bm+self.bl]=float(CG(qnset["l"],mu,qnset["lam"],bm-mu,self.bl,bm).doit())
+        for mu in range(-qnset["l"],qnset["l"]+1):
+          cgp[qnset["alpha"],mu+qnset["l"]]=float(CG(qnset["l"],mu,qnset["lam"],-mu,self.bl,0).doit())
 
         # now we can perform the mu summation for the combination of coupled spherical harmonics 
-      ylylam=np.zeros((self.nalpha,2*self.bl+1),dtype=np.cdouble)
+        #for M=0!
+      ylylam=np.zeros((self.nalpha),dtype=np.cdouble)
       for qnset in self.qnalpha:  # go through allowed l,lam combinations
         alphap=qnset["alpha"]
         l=qnset["l"]
         lam=qnset["lam"]
-        for bm in range(-self.bl,self.bl+1):
-          for mu in range(-l,l+1):
-            lmindx=self._lmindx(l,mu)
-            if abs(bm-mu)<=lam:
-              lamindx=self._lmindx(lam,bm-mu)
-              ylylam[alphap,bm+self.bl]+=cgp[alphap,mu+l,bm+self.bl]*yl[lmindx]*ylam[lamindx]
+        for mu in range(-l,l+1):
+          lmindx=self._lmindx(l,mu)
+          if abs(-mu)<=lam:
+            lamindx=self._lmindx(lam,-mu)
+            ylylam[alphap]+=cgp[alphap,mu+l]*yl[lmindx]*ylam[lamindx]
                  
       
       return ylylam
@@ -895,29 +893,27 @@ class ThreeBodyScatt(TwoBodyTMat):
         # I assume that L is smaller than the lmax or lammax therefore M=-L,L
         # the smallest index for storage 
         
-        cg=np.zeros((self.nalpha,2*self.bl+1),dtype=np.double)
-        cgp=np.zeros((self.nalpha,2*self.lmax+1,2*self.bl+1),dtype=np.double)
+        cg=np.zeros((self.nalpha),dtype=np.double)
+        cgp=np.zeros((self.nalpha,2*self.lmax+1),dtype=np.double)
         
         for qnset in self.qnalpha:  # go through allowed l,lam combinations
-          for bm in range(-self.bl,self.bl+1):
-            cg[qnset["alpha"],bm+self.bl]=float(CG(qnset["l"],bm,qnset["lam"],0,self.bl,bm).doit())
-            for mu in range(-qnset["l"],qnset["l"]+1):
-              cgp[qnset["alpha"],mu+qnset["l"],bm+self.bl]=float(CG(qnset["l"],mu,qnset["lam"],bm-mu,self.bl,bm).doit())
+          cg[qnset["alpha"]]=float(CG(qnset["l"],0,qnset["lam"],0,self.bl,0).doit())
+          for mu in range(-qnset["l"],qnset["l"]+1):
+            cgp[qnset["alpha"],mu+qnset["l"]]=float(CG(qnset["l"],mu,qnset["lam"],-mu,self.bl,0).doit())
 
         # now we can perform the mu summation for the combination of coupled spherical harmonics 
-        ylylam=np.zeros((self.nalpha,2*self.bl+1,self.nqpoints+1,self.nqpoints+1,self.nx),dtype=np.double)
+        ylylam=np.zeros((self.nalpha, self.nqpoints+1,self.nqpoints+1,self.nx),dtype=np.double)
         for qnset in self.qnalpha:  # go through allowed l,lam combinations
           alphap=qnset["alpha"]
           l=qnset["l"]
           lam=qnset["lam"]
-          for bm in range(-self.bl,self.bl+1):
-            for mu in range(-l,l+1):
-              lmindx=self._lmindx(l,mu)
-              if abs(bm-mu)<=lam:
-                lamindx=self._lmindx(lam,bm-mu)
-                ylylam[alphap,bm+self.bl,:,:,:]+=cgp[alphap,mu+l,bm+self.bl]*yl[lmindx,:,:,:]*ylam[lamindx,:]
+          for mu in range(-l,l+1):
+            lmindx=self._lmindx(l,mu)
+            if abs(-mu)<=lam:
+              lamindx=self._lmindx(lam,-mu)
+              ylylam[alphap,:,:,:]+=cgp[alphap,mu+l]*yl[lmindx,:,:,:]*ylam[lamindx,:]
                 
-        # bm summation then gives G (stored as gfunc in object)
+        # bm summation then gives G (stored as gfunc in object) but M=0?
         self.gfunc=np.zeros((self.nalpha,self.nalpha,self.nqpoints+1,self.nqpoints+1,self.nx),dtype=np.double)
         for qnset in self.qnalpha:  # go through allowed l,lam combinations
           alpha=qnset["alpha"]
@@ -925,12 +921,10 @@ class ThreeBodyScatt(TwoBodyTMat):
           lam=qnset["lam"]
           for qnsetp in self.qnalpha:  # go through allowed l,lam combinations
             alphap=qnsetp["alpha"]
-            for bm in range(-self.bl,self.bl+1):
-              if(abs(bm)<=l):  
-                lmindx=self._lmindx(l,bm) 
-                self.gfunc[alpha,alphap,:,:,:]+=8*m.pi**2*np.sqrt((2*lam+1)/(4*m.pi))/(2*self.bl+1) \
-                   *ystarl[lmindx,:,:,:]*ylylam[alphap,bm+self.bl,:,:,:] \
-                   *cg[alpha,bm+self.bl]
+            lmindx=self._lmindx(l,0) 
+            self.gfunc[alpha,alphap,:,:,:]+=8*m.pi**2*np.sqrt((2*lam+1)/(4*m.pi))/(2*self.bl+1) \
+            *ystarl[lmindx,:,:,:]*ylylam[alphap,:,:,:] \
+            *cg[alpha]
                     
         # set spline elements based on grid points and shifted momenta 
         self.splpi=Cubherm.spl(self.pgrid[0:self.npoints],self.pi)
@@ -1010,46 +1004,42 @@ class ThreeBodyScatt(TwoBodyTMat):
             ylam[self._lmindx(lam,mu),:,:,:]=np.real(sph_harm(mu,lam, 0, thetachi))
         
         # now prepare the necessary Clebsch-Gordan coefficients
-        # we need (l lam L,0 M M)  and (l lam L,mu M-mu,M)
+        # we need (l lam L,0 M M)  and (l lam L,mu M-mu,M) for M=0!!!
         # I assume that L is smaller than the lmax or lammax therefore M=-L,L
         # the smallest index for storage 
         
-        cg=np.zeros((self.nalpha,2*self.bl+1),dtype=np.double)
-        cgp=np.zeros((self.nalpha,2*self.lmax+1,2*self.bl+1),dtype=np.double)
+        cg=np.zeros((self.nalpha),dtype=np.double)
+        cgp=np.zeros((self.nalpha,2*self.lmax+1),dtype=np.double)
         
         for qnset in self.qnalpha:  # go through allowed l,lam combinations
-          for bm in range(-self.bl,self.bl+1):
-            cg[qnset["alpha"],bm+self.bl]=float(CG(qnset["l"],0,qnset["lam"],bm,self.bl,bm).doit())
-            for mu in range(-qnset["l"],qnset["l"]+1):
-              cgp[qnset["alpha"],mu+qnset["l"],bm+self.bl]=float(CG(qnset["l"],mu,qnset["lam"],bm-mu,self.bl,bm).doit())
+          cg[qnset["alpha"]]=float(CG(qnset["l"],0,qnset["lam"],0,self.bl,0).doit())
+          for mu in range(-qnset["l"],qnset["l"]+1):
+            cgp[qnset["alpha"],mu+qnset["l"]]=float(CG(qnset["l"],mu,qnset["lam"],-mu,self.bl,0).doit())
 
         # now we can perform the mu summation for the combination of coupled spherical harmonics 
-        ylylam=np.zeros((self.nalpha,2*self.bl+1,self.npoints+1,self.nqpoints+1,self.nx),dtype=np.double)
+        ylylam=np.zeros((self.nalpha,self.npoints+1,self.nqpoints+1,self.nx),dtype=np.double)
         for qnset in self.qnalpha:  # go through allowed l,lam combinations
           alphap=qnset["alpha"]
           l=qnset["l"]
           lam=qnset["lam"]
-          for bm in range(-self.bl,self.bl+1):
-            for mu in range(-l,l+1):
-              lmindx=self._lmindx(l,mu)
-              if abs(bm-mu)<=lam:
-                lamindx=self._lmindx(lam,bm-mu)
-                ylylam[alphap,bm+self.bl,:,:,:]+=cgp[alphap,mu+l,bm+self.bl]*yl[lmindx,:,:,:]*ylam[lamindx,:,:,:]
+          for mu in range(-l,l+1):
+            lmindx=self._lmindx(l,mu)
+            if abs(-mu)<=lam:
+              lamindx=self._lmindx(lam,-mu)
+              ylylam[alphap,:,:,:]+=cgp[alphap,mu+l]*yl[lmindx,:,:,:]*ylam[lamindx,:,:,:]
                 
-        # bm summation then gives G 
+        # bm summation then gives G but M=0!
         self.gtilde=np.zeros((self.nalpha,self.nalpha,self.npoints+1,self.nqpoints+1,self.nx),dtype=np.double)
         for qnset in self.qnalpha:  # go through allowed l,lam combinations
           alpha=qnset["alpha"]
           l=qnset["l"]
           lam=qnset["lam"]
           for qnsetp in self.qnalpha:  # go through allowed l,lam combinations
-            alphap=qnsetp["alpha"]
-            for bm in range(-self.bl,self.bl+1):
-              if(abs(bm)<=lam):  
-                lamindx=self._lmindx(lam,bm) 
-                self.gtilde[alpha,alphap,:,:,:]+=8*m.pi**2*np.sqrt((2*l+1)/(4*m.pi))/(2*self.bl+1) \
-                   *ystarlam[lamindx,:]*ylylam[alphap,bm+self.bl,:,:,:] \
-                   *cg[alpha,bm+self.bl]
+            alphap=qnsetp["alpha"] 
+            lamindx=self._lmindx(lam,0) 
+            self.gtilde[alpha,alphap,:,:,:]+=8*m.pi**2*np.sqrt((2*l+1)/(4*m.pi))/(2*self.bl+1) \
+            *ystarlam[lamindx,:]*ylylam[alphap,:,:,:] \
+            *cg[alpha]
             
         #  now we assume that there is a function on p on the left defined by p**l and on the right devided by p'**l' 
         # that is interpolated using Cubherm to pi and pip 
@@ -1420,7 +1410,7 @@ class ThreeBodyScatt(TwoBodyTMat):
               tsol1[alpha, jp, jq] = tsol[alpha, jq, jp]
 
 
-       #combinde pi and chi into one array
+      #combinde pi and chi into one array
       pichi = np.empty((self.npoints, self.nqpoints, self.npoints+1, self.nqpoints+1, self.nx), dtype=np.cdouble)
       for jq in range(self.nqpoints):
         for jp in range(self.npoints):
@@ -1446,7 +1436,7 @@ class ThreeBodyScatt(TwoBodyTMat):
               tampinter[alpha,jp,jq,:]=np.sum(tampinter1[alpha, jp, jq, 0:self.nqpoints, :]*self.splchitilde[0:self.nqpoints, jp, jq, :])
       '''
 
-      func=np.zeros(2*self.bl+1,dtype=np.cdouble)
+      func=0
 
       for qnset in self.qnalpha:
         alpha=qnset["alpha"]
@@ -1455,7 +1445,7 @@ class ThreeBodyScatt(TwoBodyTMat):
         #first part <a|T12>
         #get tsol at pf,qf
         tsolf = self.interpol1(tsol[alpha,:,:], pgrid, qgrid, pf, qf) 
-        func += self.combined_sph_harm(pf_ray, qf_ray)[alpha,:]*tsolf/(q0**2 - qf**2)
+        func += self.combined_sph_harm(pf_ray, qf_ray)[alpha]*tsolf/(q0**2 - qf**2)
         for qnsetp in self.qnalpha:  # go through allowed l,lam combinations
           alphap=qnsetp["alpha"]
           #second part <a|P|T12>
@@ -1464,10 +1454,10 @@ class ThreeBodyScatt(TwoBodyTMat):
           tampinterf = self.interpol2(tampinter[alphap,:,:,:], pgrid, qgrid, pf, qf, self.xp)
           #calculate chi(pf,qf,x)
           chitildef = np.sqrt(pf**2 + 1./4.*qf**2 - pf*qf*self.xp)
-          func+=2.*self.combined_sph_harm(pf_ray, qf_ray)[alpha,:]*np.sum(self.xw*gtildef*tampinterf/(q0**2 - chitildef**2))
+          func+=2.*self.combined_sph_harm(pf_ray, qf_ray)[alpha]*np.sum(self.xw*gtildef*tampinterf/(q0**2 - chitildef**2))
 
 
-      Mab = 4.*m/3.*func 
+      Mab = 4.*m/3.*func
 
       return Mab
 
