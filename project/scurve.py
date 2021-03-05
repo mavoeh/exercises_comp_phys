@@ -129,3 +129,4 @@ def scurve(theta1, theta2, phi, Elab, e, m = 938.92, N = 10**5+1, deg = True):
                                              # so that S does not get increased; = 1 else
 
     return S, Sk, k1, k2, t
+

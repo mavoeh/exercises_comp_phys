@@ -26,8 +26,8 @@ def fsi(threeBodySolver, theta, Elab, e, deg = True,
     Sk = Sk[::int(np.round(Ns/Nc))]
     k1 = k1[::int(np.round(Ns/Nc))]
     k2 = k2[::int(np.round(Ns/Nc))]
-    sig = np.zeros(Nc) # array for the cross section
-    for i in range(Nc):
+    sig = np.zeros(len(S)) # array for the cross section
+    for i in range(len(S)):
         sig[i] = threeBodySolver.breakup_cross(Elab, k1[i], k2[i], theta, theta, 0)
     
     
