@@ -62,7 +62,7 @@ def scurve(theta1, theta2, phi, Elab, e, m = 938.92, N = 10**5+1, deg = True):
     
     # check if input angles yield positive momenta
     if ((theta1>np.pi/2 and theta2>theta_m) or (theta1>theta_m and theta2>np.pi/2)):
-        return [[]]*3
+        raise ValueError("Configuration of scattering angles yields no positive momentum values!")
     
     # analytically calculate semi-axis and displacement    
     c1, s1, c2, s2 = np.cos(theta1), np.sin(theta1), np.cos(theta2), np.sin(theta2)
