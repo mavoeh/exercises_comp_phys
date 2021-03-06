@@ -60,13 +60,3 @@ def fitc0(lamlist, e0, nx=16,np1=20,np2=10,pa=1.0, pb=5.0, pc=20.0):
       print("{0:15.3f}  {1:15.6e}  {2:15.6e}".format(Lambda,cnew,eta))
         
     return fitres 
-
-
-Lam = [700.0]
-e0list = [-0.5, -1., -2.225]
-parset = []
-
-for e0 in e0list:
-  parset.append(fitc0(Lam, e0))
-
-print(parset)
