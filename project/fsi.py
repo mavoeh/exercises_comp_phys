@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 def fsi(threeBodySolver, theta, Elab, e, deg = True,
         m = 938.92,
         N_scurve = 10**5+1,
-        Nc = 100):
+        Nc = 1000):
     
     # get S curve for given parameters
     S, Sk, k1, k2, t = scurve(theta, theta, 0, Elab, e = e, m = m, N = N_scurve, deg = deg)
