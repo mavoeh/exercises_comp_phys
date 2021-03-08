@@ -9,12 +9,12 @@ import pickle
 
 m = 938.92 #MeV
 
-np1 = 40
+np1 = 20
 np2 = 10
-nq1 = 40
+nq1 = 20
 nq2 = 10
-pc = 15
-qc = 15
+pc = 20
+qc = 20
 
 '''
 Lam = [700.0]
@@ -41,11 +41,11 @@ for np1 in [16, 20, 24]:
 						it = np.abs(t-np.pi/2.).argmin()
 						sig = scattL0.breakup_cross(Elab, kx[it], ky[it], theta, theta ,phi12)
 
-						print("np1={0:d},np2={1:d},nq1={2:d},nq2={3:d},pc={4:d},qc={5:d}\t{6:e}".format(np1, np2, nq1, nq2, pc, qc, sig))
-						f.write("np1={0:d},np2={1:d},nq1={2:d},nq2={3:d},pc={4:d},qc={5:d}\t{6:e}".format(np1, np2, nq1, nq2, pc, qc, sig))
+						print("np1={0:d},np2={1:d},nq1={2:d},nq2={3:d},pc={4:d},qc={5:d}\t{6:e}\n".format(np1, np2, nq1, nq2, pc, qc, sig))
+						f.write("np1={0:d},np2={1:d},nq1={2:d},nq2={3:d},pc={4:d},qc={5:d}\t{6:e}\n".format(np1, np2, nq1, nq2, pc, qc, sig))
 
 f.close()
-'''
+
 
 
 #random configuration
@@ -190,4 +190,3 @@ for i, e0 in enumerate(e0list):
 	#plt.plot(np.repeat(pos[0],100), np.linspace(0, sigma.max(), 100))
 	
 #plt.show() 
-'''
