@@ -9,6 +9,7 @@ import pickle
 
 m = 938.92 #MeV
 
+#chosen parameters for plots
 np1 = 20
 np2 = 10
 nq1 = 20
@@ -17,6 +18,8 @@ pc = 20
 qc = 20
 
 '''
+Stability Test here: No good resulst yet!
+
 Lam = [700.0]
 e0list = [-2.125, -2.225, -2.325]
 
@@ -45,7 +48,7 @@ for np1 in [16, 20, 24]:
 						f.write("np1={0:d},np2={1:d},nq1={2:d},nq2={3:d},pc={4:d},qc={5:d}\t{6:e}\n".format(np1, np2, nq1, nq2, pc, qc, sig))
 
 f.close()
-
+'''
 
 
 #random configuration
@@ -77,12 +80,11 @@ for i in range(len(S)):
 	f.write("{0:e}\t{1:e}\n".format(S[i], sigma[i]))
 f.close()
 
-#plt.plot(S, sigma, 'o-')
-#plt.show()
 
-'''
+
 #For different parameter sets in parset (i.e. different binding energies), 
-#vary Elab and theta
+#vary theta
+
 Lam = [700.0]
 e0list = [-2.125, -2.225, -2.325]
 Elab = 13.
@@ -107,11 +109,6 @@ for i, e0 in enumerate(e0list):
 		f.write("{0:e}\t{1:e}\n".format(S[j], sigma[j]))
 	f.close()
 
-	#plt.plot(S, sigma)
-	#for j in range(len(pos)):
-	#plt.plot(np.repeat(pos[0],100), np.linspace(0, sigma.max(), 100))
-	
-#plt.show() 
 
 theta = 28.0
 names = ["txtfiles/phi0th28E13e125.txt", "txtfiles/phi0th28E13e225.txt", "txtfiles/phi0th28E13e325.txt"]
@@ -133,11 +130,6 @@ for i, e0 in enumerate(e0list):
 		f.write("{0:e}\t{1:e}\n".format(S[j], sigma[j]))
 	f.close()
 
-	#plt.plot(S, sigma)
-	#for j in range(len(pos)):
-	plt.plot(np.repeat(pos[0],100), np.linspace(0, sigma.max(), 100))
-	
-#plt.show() 
 
 theta = 35.5
 names = ["txtfiles/phi0th355E13e125.txt", "txtfiles/phi0th355E13e225.txt", "txtfiles/phi0th355E13e325.txt"]
@@ -158,12 +150,7 @@ for i, e0 in enumerate(e0list):
 	for j in range(len(S)):
 		f.write("{0:e}\t{1:e}\n".format(S[j], sigma[j]))
 	f.close()
-
-	#plt.plot(S, sigma)
-	#for j in range(len(pos)):
-	#plt.plot(np.repeat(pos[0],100), np.linspace(0, sigma.max(), 100))
-	
-#plt.show() 
+ 
 
 theta = 43.0
 names = ["txtfiles/phi0th43E13e125.txt", "txtfiles/phi0th43E13e225.txt", "txtfiles/phi0th43E13e325.txt"]
@@ -184,9 +171,3 @@ for i, e0 in enumerate(e0list):
 	for j in range(len(S)):
 		f.write("{0:e}\t{1:e}\n".format(S[j], sigma[j]))
 	f.close()
-
-	#plt.plot(S, sigma)
-	#for j in range(len(pos)):
-	#plt.plot(np.repeat(pos[0],100), np.linspace(0, sigma.max(), 100))
-	
-#plt.show() 
