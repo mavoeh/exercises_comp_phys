@@ -7,14 +7,14 @@ plt.rcParams['axes.grid'] = True
 
 #first plot phi = 180, theta1 = theta2 = 39 and Elab = 13 MeV
 
-S, sigma = np.loadtxt("txtfiles/phi180th39E13.txt", unpack = True, skiprows = 1)
+S, sigma = np.loadtxt("txtfiles/phi45th1045E25.txt", unpack = True, skiprows = 1)
 
 plt.figure()
 plt.plot(S, sigma)
 plt.xlabel("$S$ (MeV)")
 plt.ylabel("d$^3 \sigma$/d$\Omega_1$d$\Omega_2$d$S$ (mb sr$^{-2}$ MeV$^{-1}$)")
 plt.tight_layout()
-plt.savefig("plots/phi180th39E13.pdf")
+plt.savefig("plots/phi45th1045E25.pdf")
 
 #now plot fsi peaks for different binding energies phi = 0, Elab = 13 MeV
 
