@@ -1,14 +1,19 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+plt.rc('font',family='Times New Roman', size=12)
+plt.rcParams['axes.grid'] = True
+plt.rcParams['axes.grid'] = True
+
 #first plot phi = 180, theta1 = theta2 = 39 and Elab = 13 MeV
 
 S, sigma = np.loadtxt("txtfiles/phi180th39E13.txt", unpack = True, skiprows = 1)
 
 plt.figure()
 plt.plot(S, sigma)
-plt.xlabel("$S$")
-plt.ylabel("d$^3 \sigma$/d$\Omega_1$d$\Omega_2$d$S$")
+plt.xlabel("$S$ (MeV)")
+plt.ylabel("d$^3 \sigma$/d$\Omega_1$d$\Omega_2$d$S$ (mb sr$^{-2}$ MeV$^{-1}$)")
+plt.tight_layout()
 plt.savefig("plots/phi180th39E13.pdf")
 
 #now plot fsi peaks for different binding energies phi = 0, Elab = 13 MeV
@@ -34,9 +39,10 @@ plt.plot(S3, sig3, label = "$\epsilon_d = -2.325$ MeV", color = "forestgreen")
 plt.plot(np.repeat(pos1,100), np.linspace(0, sig1.max(), 100), color = "firebrick")
 plt.plot(np.repeat(pos2,100), np.linspace(0, sig2.max(), 100), color = "navy")
 plt.plot(np.repeat(pos3,100), np.linspace(0, sig3.max(), 100), color = "forestgreen")
-plt.xlabel("$S$")
-plt.ylabel("d$^3 \sigma$/d$\Omega_1$d$\Omega_2$d$S$")
+plt.xlabel("$S$ (MeV)", fontsize = 14)
+plt.ylabel("d$^3 \sigma$/d$\Omega_1$d$\Omega_2$d$S$ (mb sr$^{-2}$ MeV$^{-1}$)", fontsize = 14)
 plt.legend()
+plt.tight_layout()
 plt.savefig("plots/phi0th205E13.pdf")
 
 
@@ -61,9 +67,10 @@ plt.plot(S3, sig3, label = "$\epsilon_d = -2.325$ MeV", color = "forestgreen")
 plt.plot(np.repeat(pos1,100), np.linspace(0, sig1.max(), 100), color = "firebrick")
 plt.plot(np.repeat(pos2,100), np.linspace(0, sig2.max(), 100), color = "navy")
 plt.plot(np.repeat(pos3,100), np.linspace(0, sig3.max(), 100), color = "forestgreen")
-plt.xlabel("$S$")
-plt.ylabel("d$^3 \sigma$/d$\Omega_1$d$\Omega_2$d$S$")
+plt.xlabel("$S$ (MeV)", fontsize = 14)
+plt.ylabel("d$^3 \sigma$/d$\Omega_1$d$\Omega_2$d$S$ (mb sr$^{-2}$ MeV$^{-1}$)", fontsize = 14)
 plt.legend()
+plt.tight_layout()
 plt.savefig("plots/phi0th28E13.pdf")
 
 #theta = 35.5
@@ -87,9 +94,10 @@ plt.plot(S3, sig3, label = "$\epsilon_d = -2.325$ MeV", color = "forestgreen")
 plt.plot(np.repeat(pos1,100), np.linspace(0, sig1.max(), 100), color = "firebrick")
 plt.plot(np.repeat(pos2,100), np.linspace(0, sig2.max(), 100), color = "navy")
 plt.plot(np.repeat(pos3,100), np.linspace(0, sig3.max(), 100), color = "forestgreen")
-plt.xlabel("$S$")
-plt.ylabel("d$^3 \sigma$/d$\Omega_1$d$\Omega_2$d$S$")
+plt.xlabel("$S$ (MeV)", fontsize = 14)
+plt.ylabel("d$^3 \sigma$/d$\Omega_1$d$\Omega_2$d$S$ (mb sr$^{-2}$ MeV$^{-1}$)", fontsize = 14)
 plt.legend()
+plt.tight_layout()
 plt.savefig("plots/phi0th355E13.pdf")
 
 #theta = 43.0
@@ -113,7 +121,8 @@ plt.plot(S3, sig3, label = "$\epsilon_d = -2.325$ MeV", color = "forestgreen")
 plt.plot(np.repeat(pos1,100), np.linspace(0, sig1.max(), 100), color = "firebrick")
 plt.plot(np.repeat(pos2,100), np.linspace(0, sig2.max(), 100), color = "navy")
 plt.plot(np.repeat(pos3,100), np.linspace(0, sig3.max(), 100), color = "forestgreen")
-plt.xlabel("$S$")
-plt.ylabel("d$^3 \sigma$/d$\Omega_1$d$\Omega_2$d$S$")
+plt.xlabel("$S$ (MeV)", fontsize = 14)
+plt.ylabel("d$^3 \sigma$/d$\Omega_1$d$\Omega_2$d$S$ (mb sr$^{-2}$ MeV$^{-1}$)", fontsize = 14)
 plt.legend()
+plt.tight_layout()
 plt.savefig("plots/phi0th43E13.pdf")

@@ -4,38 +4,57 @@ from ThreeBodyScattering import *
 from fit import *
 from scurve import *
 from fsi import *
+import pickle
+
 
 m = 938.92 #MeV
 
 Lam = [700.0]
 e0list = [-2.125, -2.225, -2.325]
-Energies = np.array([0.01, 0.05, 0.1, 0.2, 0.4, 0.6, 1, 2, 4])
+
+para = fitc0(Lam,e0list[1])[0]
+pot=OBEpot(nx=24,mpi=138.0,C0=para[1],A=-1.0/6.474860194946856,cutoff=para[0])
+
+Elab = 13
+
+ed, _, _, _ = TwoBody(pot, np1=20, np2=10).esearch()
+
+scattL0 = ThreeBodyScatt(pot,e3n=(2./3.*Elab/ThreeBodyScatt.hbarc + ed),nx=16,np1=20,np2=10,nq1=15,nq2=5,lmax=0,bl=0)
+
+pickle.dump(scattL0, open("test_scattL0.p", "wb"))
+
+
+"""
+Energies = np.linspace(0,0.7,20)
 names = ["txtfiles/totEe125.txt", "txtfiles/totEe225.txt", "txtfiles/totEe325.txt"]
 
 for j, e0 in enumerate(e0list):
-	stot = []
-	for i, Elab in enumerate(Energies):
-		para = fitc0(Lam,e0list[1])[0]
-		pot=OBEpot(nx=24,mpi=138.0,C0=para[1],A=-1.0/6.474860194946856,cutoff=para[0])
+    stot = []
+    for i, Elab in enumerate(Energies):
+        para = fitc0(Lam,e0list[j])[0]
+        pot=OBEpot(nx=24,mpi=138.0,C0=para[1],A=-1.0/6.474860194946856,cutoff=para[0])
+        
+        ed, _, _, _ = TwoBody(pot, np1=20, np2=10).esearch()
 
-		ed, _, _, _ = TwoBody(pot, np1=20, np2=10).esearch()
-
-		scattL0 = ThreeBodyScatt(pot,e3n=(2./3.*Elab/ThreeBodyScatt.hbarc + ed),nx=16,np1=20,np2=10,nq1=15,nq2=5,lmax=0,bl=0)
-		ed *= scattL0.hbarc
+        scattL0 = ThreeBodyScatt(pot,e3n=(2./3.*Elab/ThreeBodyScatt.hbarc + ed),nx=16,np1=20,np2=10,nq1=15,nq2=5,lmax=0,bl=0)
+        ed *= scattL0.hbarc
 
 		#get elastic cross section
-		theta = np.arccos(scattL0.xp)
-		melast = scattL0.get_m_elast_drive(theta) + scattL0.get_m_elast_pw(theta)
-		sigma = (2*np.pi)**4*2./3.*(m/scattL0.hbarc)**2*np.absolute(melast)**2
+        theta = np.arccos(scattL0.xp)
+        melast = scattL0.get_m_elast_drive(theta) + scattL0.get_m_elast_pw(theta)
+        sigma = (2*np.pi)**4*2./3.*(m/scattL0.hbarc)**2*np.absolute(melast)**2
 		
 		#integrate to get total cross section
-		stot.append(2.*np.pi*np.sum(scattL0.xw*sigma))
-
+        stot.append(2.*np.pi*np.sum(scattL0.xw*sigma))
+    
+    array = np.array([Energies, stot])
+    np.savetxt("txtfiles/scatt_length_"+str(abs(e0))+".txt", array)
+    print(e0, "done")
 
 
 plt.plot(Energies, stot)
 plt.show()
-
+"""
 
 '''
 para2=[700.0, 0.020167185806378923]

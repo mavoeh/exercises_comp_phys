@@ -641,7 +641,7 @@ class ThreeBodyScatt(TwoBodyTMat):
            bl    -- total orbital angular momentum L ("big l")           
         """
         
-        starttime=time.clock_gettime(time.CLOCK_MONOTONIC)
+        #starttime=time.clock_gettime(time.CLOCK_MONOTONIC)
         
         # first initialize the tmatrix class (do not calc the tmatrix yet)
         # this also prepares the grid points 
@@ -673,16 +673,16 @@ class ThreeBodyScatt(TwoBodyTMat):
         for qnset in self.qnalpha:
            print("{0:10d}   {1:4d}    {2:4d}    {3:4d}".format(qnset["alpha"],qnset["l"],qnset["lam"],qnset["bl"]))
 
-        print("Preptime: {0:15.6} sec".format(time.clock_gettime(time.CLOCK_MONOTONIC)-starttime))
-        starttime=time.clock_gettime(time.CLOCK_MONOTONIC)
+        #print("Preptime: {0:15.6} sec".format(time.clock_gettime(time.CLOCK_MONOTONIC)-starttime))
+        #starttime=time.clock_gettime(time.CLOCK_MONOTONIC)
         
         # now the tmatrix itself is prepared. this is necessary to fix qon
         print("Calculate tmatrix (tilde) for given E = {0:15.6} MeV".format(e3n*self.hbarc))
         self.tmat=self.prep_tmat(E=e3n)
         self.e3n=e3n 
         
-        print("tmat: {0:15.6} sec".format(time.clock_gettime(time.CLOCK_MONOTONIC)-starttime))
-        starttime=time.clock_gettime(time.CLOCK_MONOTONIC)
+        #print("tmat: {0:15.6} sec".format(time.clock_gettime(time.CLOCK_MONOTONIC)-starttime))
+        #starttime=time.clock_gettime(time.CLOCK_MONOTONIC)
         
         # this prepares the G function and splines to be used for the preparation of the 
         # kernel later 
@@ -690,42 +690,42 @@ class ThreeBodyScatt(TwoBodyTMat):
         print("Calculate gfunc etc. ")
         self._prep_gfunc()
 
-        print("gfunc: {0:15.6} sec".format(time.clock_gettime(time.CLOCK_MONOTONIC)-starttime))
-        starttime=time.clock_gettime(time.CLOCK_MONOTONIC)
+        #print("gfunc: {0:15.6} sec".format(time.clock_gettime(time.CLOCK_MONOTONIC)-starttime))
+        #starttime=time.clock_gettime(time.CLOCK_MONOTONIC)
 
         # now prepare the matrix for the permutation of a state (for wf calc)
         # it also prepares the shifted momenta and splines 
         print("Calculate gtilde etc. ")
         self._prep_gtilde()
         
-        print("gtilde: {0:15.6} sec".format(time.clock_gettime(time.CLOCK_MONOTONIC)-starttime))
-        starttime=time.clock_gettime(time.CLOCK_MONOTONIC)
+        #print("gtilde: {0:15.6} sec".format(time.clock_gettime(time.CLOCK_MONOTONIC)-starttime))
+        #starttime=time.clock_gettime(time.CLOCK_MONOTONIC)
         
         # now prepare the rhs (inhomogeneity)
         print("Preparing rhs ...")
         self._init_rhs()
         print("rhs done.")
         
-        print("rhs: {0:15.6} sec".format(time.clock_gettime(time.CLOCK_MONOTONIC)-starttime))
-        starttime=time.clock_gettime(time.CLOCK_MONOTONIC)
+        #print("rhs: {0:15.6} sec".format(time.clock_gettime(time.CLOCK_MONOTONIC)-starttime))
+        #starttime=time.clock_gettime(time.CLOCK_MONOTONIC)
         
         print("Preparing k_1 ...")
         self._init_k_1()
         print("k_1 done.")
-        print("k_1: {0:15.6} sec".format(time.clock_gettime(time.CLOCK_MONOTONIC)-starttime))
-        starttime=time.clock_gettime(time.CLOCK_MONOTONIC)
+        #print("k_1: {0:15.6} sec".format(time.clock_gettime(time.CLOCK_MONOTONIC)-starttime))
+        #starttime=time.clock_gettime(time.CLOCK_MONOTONIC)
         
         print("Preparing k_2 ...")
         self._init_k_2()
         print("k_2 done.")
-        print("k_2: {0:15.6} sec".format(time.clock_gettime(time.CLOCK_MONOTONIC)-starttime))
-        starttime=time.clock_gettime(time.CLOCK_MONOTONIC)
+        #print("k_2: {0:15.6} sec".format(time.clock_gettime(time.CLOCK_MONOTONIC)-starttime))
+        #starttime=time.clock_gettime(time.CLOCK_MONOTONIC)
         
         print("Solving equations ...")
         self._solve_fad()
         print("Solving done.")
-        print("Solve: {0:15.6} sec".format(time.clock_gettime(time.CLOCK_MONOTONIC)-starttime))
-        starttime=time.clock_gettime(time.CLOCK_MONOTONIC)
+        #print("Solve: {0:15.6} sec".format(time.clock_gettime(time.CLOCK_MONOTONIC)-starttime))
+        #starttime=time.clock_gettime(time.CLOCK_MONOTONIC)
 
         
     def _angle(self,px,py,pz):
