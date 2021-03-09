@@ -17,8 +17,8 @@ nq2 = 10
 pc = 20
 qc = 20
 
-'''
-Stability Test here: No good resulst yet!
+
+#Stability Test here: No good resulst yet!
 
 Lam = [700.0]
 e0list = [-2.125, -2.225, -2.325]
@@ -30,27 +30,21 @@ Elab = 13.
 theta = 43.0
 phi12 = 0
 
-f = open("convergence.txt", "w")
-for np1 in [16, 20, 24]:
-	for np2 in [8, 10, 12]:
-		for nq1 in [16, 20, 24]:
-			for nq2 in [8,10,12]:
-				for pc in [15,20]:
-					for qc in [15,20]:
-						ed, _, _, _ = TwoBody(pot, np1=np1, np2=np2, pc=pc).esearch()
-						scattL0 = ThreeBodyScatt(pot,e3n=(2./3.*Elab/ThreeBodyScatt.hbarc + ed),nx=16,np1=np1,np2=np2,nq1=nq1,nq2=nq2,pc=pc,qc=qc,lmax=0,bl=0)
+sig = np.zeros((8,8))
+for i, np1 in enumerate([20, 22, 24, 26, 28, 30, 32, 34]):
+	for j, nq1 in enumerate([20, 22, 24, 26, 28, 30, 32, 34]):
+		ed, _, _, _ = TwoBody(pot, np1=np1, np2=np2, pc=pc).esearch()
+		scattL0 = ThreeBodyScatt(pot,e3n=(2./3.*Elab/ThreeBodyScatt.hbarc + ed),nx=16,np1=np1,np2=np2,nq1=nq1,nq2=nq2,pc=pc,qc=qc,lmax=0,bl=0)
 
-						S, _, kx, ky, t = scurve(theta, theta, phi12, Elab, e = ed, deg=True)
-						it = np.abs(t-np.pi/2.).argmin()
-						sig = scattL0.breakup_cross(Elab, kx[it], ky[it], theta, theta ,phi12)
+		S, _, kx, ky, t = scurve(theta, theta, phi12, Elab, e = ed, deg=True)
+		it = np.abs(t-np.pi/2.).argmin()
+		sig[i,j] = scattL0.breakup_cross(Elab, kx[it], ky[it], theta, theta ,phi12)
 
-						print("np1={0:d},np2={1:d},nq1={2:d},nq2={3:d},pc={4:d},qc={5:d}\t{6:e}\n".format(np1, np2, nq1, nq2, pc, qc, sig))
-						f.write("np1={0:d},np2={1:d},nq1={2:d},nq2={3:d},pc={4:d},qc={5:d}\t{6:e}\n".format(np1, np2, nq1, nq2, pc, qc, sig))
+		print("np1={0:d},np2={1:d},nq1={2:d},nq2={3:d},pc={4:d},qc={5:d}\t{6:e}\n".format(np1, np2, nq1, nq2, pc, qc, sig[i,j]))
+		pickle.dump(sig, open("txtfiles/cross_sec_convergence.p", "wb"))
 
-f.close()
+
 '''
-
-
 #random configuration
 para2=[700.0, 0.020167185806378923]
 pot=OBEpot(nx=24,mpi=138.0,C0=para2[1],A=-1.0/6.474860194946856,cutoff=para2[0])
@@ -171,3 +165,4 @@ for i, e0 in enumerate(e0list):
 	for j in range(len(S)):
 		f.write("{0:e}\t{1:e}\n".format(S[j], sigma[j]))
 	f.close()
+'''
